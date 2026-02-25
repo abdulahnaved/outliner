@@ -3,3 +3,9 @@ node_modules
 out
 .DS_Store
 
+# Python backend
+.venv
+__pycache__/
+*.pyc
+backend/.venv
+

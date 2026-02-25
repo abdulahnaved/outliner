@@ -2,21 +2,21 @@
 
 import { useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
-import { normalizeDomain } from '../lib/normalizeDomain'
 
 export function DomainInput() {
   const router = useRouter()
   const [value, setValue] = useState('')
   const [checked, setChecked] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
 
-    const normalized = normalizeDomain(value)
-    if (!normalized) {
-      setError('Enter a valid domain, like example.com.')
+    const trimmed = value.trim()
+    if (!trimmed) {
+      setError('Enter a domain or URL to scan.')
       return
     }
     if (!checked) {
@@ -24,8 +24,44 @@ export function DomainInput() {
       return
     }
 
-    const searchParams = new URLSearchParams({ domain: normalized })
-    router.push(`/report/demo?${searchParams.toString()}`)
+    setLoading(true)
+    try {
+      const res = await fetch('http://localhost:8000/api/fetch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ target: trimmed })
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        const detail =
+          (data && typeof data.detail === 'string' && data.detail) ||
+          'Fetch failed.'
+        setError(detail)
+        return
+      }
+
+      if (data) {
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.setItem('outliner:lastFetch', JSON.stringify(data))
+          } catch {
+            // ignore storage errors
+          }
+        }
+
+        const domain = String(data.normalized_host || trimmed)
+        const searchParams = new URLSearchParams({ domain })
+        router.push(`/report/demo?${searchParams.toString()}`)
+      }
+    } catch {
+      setError('Could not reach scanner backend.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -42,9 +78,10 @@ export function DomainInput() {
         />
         <button
           type="submit"
-          className="h-10 rounded border border-red-500/70 bg-red-500/15 px-4 text-xs font-semibold tracking-wide text-red-500 shadow-glow transition hover:border-red-500 hover:bg-red-500/25 sm:h-auto sm:px-6"
+          disabled={loading}
+          className="h-10 rounded border border-red-500/70 bg-red-500/15 px-4 text-xs font-semibold tracking-wide text-red-500 shadow-glow transition hover:border-red-500 hover:bg-red-500/25 disabled:cursor-not-allowed disabled:border-red-500/40 disabled:bg-red-500/10 sm:h-auto sm:px-6"
         >
-          RUN SCAN
+          {loading ? 'FETCHING…' : 'RUN SCAN'}
         </button>
       </div>
       <label className="flex items-start gap-2 text-[11px] text-muted">

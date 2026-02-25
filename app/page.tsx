@@ -4,24 +4,23 @@ import { DomainInput } from '../components/DomainInput'
 export default function LandingPage() {
   return (
     <div className="space-y-32">
-      <section id="scan" className="space-y-8">
-        <div className="space-y-4">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-            <span className="text-red-500">outliner</span>
-            <span className="text-white">.</span> surface tells a <span className="text-accent">story</span>.
-          </p>
-          <div className="space-y-2">
+      <section
+        id="scan"
+        className="flex min-h-[70vh] flex-col items-center justify-center space-y-8"
+      >
+        <div className="max-w-xl space-y-6 text-center">
+          <div className="space-y-3">
             <h1 className="text-3xl font-semibold sm:text-4xl">
               <span className="text-red-500">outliner</span>
               <span className="text-white">.</span>
             </h1>
-            <h2 className="text-2xl text-muted sm:text-3xl">surface tells a story.</h2>
+            <h2 className="text-2xl text-muted sm:text-3xl">every surface tells a story</h2>
           </div>
-          <p className="max-w-md text-sm text-muted">
+          <p className="mt-1 text-sm text-muted">
             A calm, structured view of what your website exposes.
           </p>
         </div>
-        <div className="max-w-xl space-y-4 rounded border border-white/15 bg-black/25 p-4">
+        <div className="w-full max-w-xl space-y-4 rounded border border-white/15 bg-black/25 p-4">
           <div className="space-y-2">
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted">run a dummy scan</p>
             <p className="text-xs text-muted">

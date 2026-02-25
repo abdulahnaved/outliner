@@ -5,10 +5,6 @@ export default function AboutPage() {
     <div className="space-y-24">
       <section className="space-y-6">
         <div className="space-y-3">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-            <span className="text-brandRed">outliner</span>
-            <span className="text-text">.</span> overview
-          </p>
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold sm:text-4xl">what it is</h1>
             <p className="max-w-xl text-sm text-muted">

@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { mockReport } from '../../../lib/mockReport'
 import { ScoreCard } from '../../../components/ScoreCard'
 import { IssueCard } from '../../../components/IssueCard'
+import { LastFetchDebug } from '../../../components/LastFetchDebug'
 
 function ReportInner({ searchParams }: { searchParams: { domain?: string } }) {
   const domain = searchParams.domain || 'demo.example'
@@ -87,6 +88,8 @@ function ReportInner({ searchParams }: { searchParams: { domain?: string } }) {
           ))}
         </div>
       </section>
+
+      <LastFetchDebug />
     </div>
   )
 }

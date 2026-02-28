@@ -9,3 +9,10 @@ __pycache__/
 *.pyc
 backend/.venv
 
+# Lab self-signed certs (generate with lab/certs/README.md)
+lab/certs/localhost.crt
+lab/certs/localhost.key
+
+# Backend scan dataset (append-only, may contain sensitive targets)
+backend/data/scans.jsonl
+

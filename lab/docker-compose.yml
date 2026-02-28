@@ -1,0 +1,48 @@
+services:
+  lab_good:
+    image: nginx:alpine
+    volumes:
+      - ./sites/good/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./sites/good/index.html:/usr/share/nginx/html/index.html:ro
+      - ./certs/localhost.crt:/etc/nginx/certs/localhost.crt:ro
+      - ./certs/localhost.key:/etc/nginx/certs/localhost.key:ro
+    ports:
+      - "8441:443"
+
+  lab_bad_headers:
+    image: nginx:alpine
+    volumes:
+      - ./sites/bad_headers/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./sites/bad_headers/index.html:/usr/share/nginx/html/index.html:ro
+      - ./certs/localhost.crt:/etc/nginx/certs/localhost.crt:ro
+      - ./certs/localhost.key:/etc/nginx/certs/localhost.key:ro
+    ports:
+      - "8442:443"
+
+  lab_bad_cors:
+    image: nginx:alpine
+    volumes:
+      - ./sites/bad_cors/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./sites/bad_cors/index.html:/usr/share/nginx/html/index.html:ro
+      - ./certs/localhost.crt:/etc/nginx/certs/localhost.crt:ro
+      - ./certs/localhost.key:/etc/nginx/certs/localhost.key:ro
+    ports:
+      - "8443:443"
+
+  lab_bad_cookies:
+    image: nginx:alpine
+    volumes:
+      - ./sites/bad_cookies/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./sites/bad_cookies/index.html:/usr/share/nginx/html/index.html:ro
+      - ./certs/localhost.crt:/etc/nginx/certs/localhost.crt:ro
+      - ./certs/localhost.key:/etc/nginx/certs/localhost.key:ro
+    ports:
+      - "8444:443"
+
+  lab_http_only:
+    image: nginx:alpine
+    volumes:
+      - ./sites/http_only/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./sites/http_only/index.html:/usr/share/nginx/html/index.html:ro
+    ports:
+      - "8085:80"

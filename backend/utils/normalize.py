@@ -20,6 +20,8 @@ def _validate_hostname(hostname: str) -> bool:
     return False
   if len(hostname) > 253:
     return False
+  if hostname == "localhost":
+    return True
   return bool(_HOST_PATTERN.fullmatch(hostname))
 
 
@@ -51,7 +53,11 @@ def normalize_target(raw: str) -> NormalizedTarget:
   if not _validate_hostname(hostname):
     raise ValueError("invalid hostname")
 
-  requested_url = f"{scheme}://{hostname}/"
+  port = parsed.port
+  if port is not None and port != (443 if scheme == "https" else 80):
+    requested_url = f"{scheme}://{hostname}:{port}/"
+  else:
+    requested_url = f"{scheme}://{hostname}/"
 
   return NormalizedTarget(normalized_host=hostname, requested_url=requested_url)
 

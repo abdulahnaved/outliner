@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import ipaddress
 
 
@@ -9,10 +10,25 @@ def is_blocked_host(hostname: str) -> bool:
 
   - Block localhost and *.local
   - Block private / loopback IPv4 ranges and 0.0.0.0
+
+  Dev-only: set OUTLINER_ALLOW_LOCALHOST=true to allow localhost/private IPs
+  (e.g. for scanning lab targets). Secure by default.
   """
   host = (hostname or "").strip().lower()
   if not host:
     return True
+
+  # Dev-only bypass: allow localhost and private IPs for lab testing
+  allow_local = os.getenv("OUTLINER_ALLOW_LOCALHOST", "").strip().lower() in ("true", "1", "yes")
+  if allow_local:
+    if host == "localhost" or host.endswith(".local"):
+      return False
+    try:
+      ip = ipaddress.ip_address(host)
+      if ip.is_loopback or ip.is_private or ip == ipaddress.ip_address("0.0.0.0"):
+        return False
+    except ValueError:
+      pass
 
   # Obvious local names
   if host == "localhost" or host.endswith(".local"):
@@ -38,5 +54,3 @@ def is_blocked_host(hostname: str) -> bool:
     return True
 
   return False
-
-

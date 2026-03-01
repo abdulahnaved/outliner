@@ -2,9 +2,13 @@
 """
 Dev-only sanity check for lab targets. Run with lab containers up.
 Uses verify=False for self-signed certs; do not use in production.
+
+Optional: python3 scripts/test_lab.py --scan youtube.com
+  Calls POST /api/scan and prints http_probe evidence for real sites.
 """
 from __future__ import annotations
 
+import argparse
 import warnings
 
 import httpx
@@ -35,7 +39,7 @@ HEADERS_TO_SHOW = [
 ]
 
 
-def main() -> None:
+def run_lab_checks(api_url: str) -> None:
     client = httpx.Client(verify=False, timeout=10.0)
     try:
         for url in LAB_URLS:
@@ -56,6 +60,38 @@ def main() -> None:
     finally:
         client.close()
     print()
+
+
+def run_scan_and_print_evidence(target: str, api_url: str) -> None:
+    url = f"{api_url.rstrip('/')}/api/scan"
+    try:
+        r = httpx.post(url, json={"target": target}, timeout=30.0)
+        if r.status_code != 200:
+            print(f"Scan failed: {r.status_code} {r.text}")
+            return
+        data = r.json()
+        feats = data.get("features") or {}
+        ev = data.get("evidence") or {}
+        print(f"\n--- Scan: {target} ---")
+        print(f"redirect_http_to_https: {feats.get('redirect_http_to_https')}")
+        print("HTTP probe evidence:")
+        print(f"  http_probe_status: {ev.get('http_probe_status')}")
+        print(f"  http_probe_location: {ev.get('http_probe_location')}")
+        print(f"  http_probe_error: {ev.get('http_probe_error')}")
+    except Exception as e:
+        print(f"Error: {e}")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Lab sanity check; optional --scan for http_probe evidence")
+    ap.add_argument("--scan", type=str, metavar="TARGET", help="Call /api/scan and print http_probe evidence (e.g. youtube.com)")
+    ap.add_argument("--api-url", type=str, default="http://localhost:8000", help="Base URL of API (for --scan)")
+    args = ap.parse_args()
+
+    if args.scan:
+        run_scan_and_print_evidence(args.scan, args.api_url)
+        return
+    run_lab_checks(args.api_url)
 
 
 if __name__ == "__main__":

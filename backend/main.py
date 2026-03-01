@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import json
-import os
-from datetime import datetime, timezone
-
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,19 +10,7 @@ from utils.ssrf import is_blocked_host
 from services.fetch import perform_fetch
 from services.passive_scan import perform_passive_scan
 
-SCANS_JSONL = os.path.join(os.path.dirname(__file__), "data", "scans.jsonl")
-
-
-def _append_scan(result: ScanResult) -> None:
-    os.makedirs(os.path.dirname(SCANS_JSONL), exist_ok=True)
-    dump = getattr(result, "model_dump", None) or getattr(result, "dict", lambda: {})
-    payload = {
-        "scan_timestamp": datetime.now(timezone.utc).isoformat(),
-        **dump(),
-    }
-    with open(SCANS_JSONL, "a") as f:
-        f.write(json.dumps(payload) + "\n")
-
+# Dataset persistence is done only by batch_scan.py; /api/scan returns JSON only.
 
 app = FastAPI(title="Outliner Backend", version="0.1.0")
 
@@ -95,10 +79,7 @@ async def api_scan(payload: ScanRequest) -> ScanResult:
     raise HTTPException(status_code=504, detail="Fetch timeout")
   except httpx.HTTPError:
     raise HTTPException(status_code=502, detail="Fetch failed")
-
-  try:
-    _append_scan(result)
-  except Exception:
-    pass
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f"Scan error: {type(e).__name__}: {str(e)[:200]}")
 
   return result

@@ -1,5 +1,5 @@
 """
-Passive scanner v2: posture features for modeling (CSP/HSTS quality, cookies, status buckets).
+Passive scanner v3: posture features + rule-based scoring (OWASP-inspired).
 """
 from __future__ import annotations
 
@@ -16,17 +16,27 @@ import httpx
 
 from schemas import ScanEvidence, ScanFeatures, ScanResult
 
+from .scoring_v3 import compute_rule_score
+
 
 USER_AGENT = "Outliner/0.1 (research)"
 TIMEOUT_SECONDS = 15.0
 HTTP_PROBE_TIMEOUT = 8.0
 REDIRECT_STATUSES = {301, 302, 303, 307, 308}
+WEAK_CIPHER_PATTERNS = re.compile(r"RC4|3DES|DES|NULL|EXPORT|MD5", re.IGNORECASE)
 TLS_VERSION_MAP = {
     "TLSv1": 1.0,
     "TLSv1.1": 1.1,
     "TLSv1.2": 1.2,
     "TLSv1.3": 1.3,
 }
+TLS_VERSION_SCORE_MAP = {1.0: 0.0, 1.1: 0.2, 1.2: 0.7, 1.3: 1.0}
+HSTS_LONG_SECONDS = 15552000  # 180 days
+REFERRER_POLICY_STRICT = {"no-referrer", "strict-origin", "strict-origin-when-cross-origin"}
+CSP_DIRECTIVES_FOR_WILDCARD = (
+    "default-src", "script-src", "style-src", "img-src",
+    "connect-src", "frame-src", "child-src", "object-src",
+)
 
 
 def _csp_quality(csp_val: Optional[str]) -> Tuple[int, int, int, int]:
@@ -50,22 +60,50 @@ def _csp_quality(csp_val: Optional[str]) -> Tuple[int, int, int, int]:
     return unsafe_inline, unsafe_eval, default_self, object_none
 
 
-def _hsts_strength(hsts_val: Optional[str]) -> Tuple[Optional[float], int, int]:
-    """Return (max_age_days, include_subdomains, preload)."""
+def _hsts_strength(hsts_val: Optional[str]) -> Tuple[Optional[float], Optional[int], int, int, int]:
+    """Return (max_age_days, max_age_seconds, hsts_long, include_subdomains, preload)."""
     if not hsts_val or not hsts_val.strip():
-        return None, 0, 0
+        return None, None, 0, 0, 0
     s = hsts_val.strip().lower()
+    max_age_secs: Optional[int] = None
     max_age_days: Optional[float] = None
     m = re.search(r"max-age\s*=\s*(\d+)", s)
     if m:
         try:
-            secs = int(m.group(1))
-            max_age_days = round(secs / 86400.0, 2)
+            max_age_secs = int(m.group(1))
+            max_age_days = round(max_age_secs / 86400.0, 2)
         except (ValueError, TypeError):
             pass
+    hsts_long = 1 if (max_age_secs is not None and max_age_secs >= HSTS_LONG_SECONDS) else 0
     include_subdomains = 1 if "includesubdomains" in s.replace("-", "").replace(" ", "") else 0
     preload = 1 if "preload" in s else 0
-    return max_age_days, include_subdomains, preload
+    return max_age_days, max_age_secs, hsts_long, include_subdomains, preload
+
+
+def _csp_v3(csp_val: Optional[str]) -> Tuple[int, int, int, int, float]:
+    """Return (csp_has_default_src, csp_unsafe_inline, csp_unsafe_eval, csp_has_wildcard, csp_score)."""
+    if not csp_val or not csp_val.strip():
+        return 0, 0, 0, 0, 0.0
+    raw = csp_val.strip()
+    s = raw.lower().replace(" ", "")
+    has_default_src = 1 if "default-src" in raw.lower() else 0
+    unsafe_inline = 1 if "'unsafe-inline'" in s else 0
+    unsafe_eval = 1 if "'unsafe-eval'" in s else 0
+    has_wildcard = 0
+    for directive in CSP_DIRECTIVES_FOR_WILDCARD:
+        m = re.search(rf"{re.escape(directive)}\s+([^;]+)", raw, re.IGNORECASE)
+        if m and "*" in m.group(1):
+            has_wildcard = 1
+            break
+    if has_default_src == 0:
+        csp_score = 0.3 if raw else 0.0
+    elif unsafe_eval == 1 or has_wildcard == 1:
+        csp_score = 0.3
+    elif unsafe_inline == 1:
+        csp_score = 0.7
+    else:
+        csp_score = 1.0
+    return has_default_src, unsafe_inline, unsafe_eval, has_wildcard, csp_score
 
 
 def _should_skip_verify(host: str) -> bool:
@@ -313,9 +351,34 @@ async def perform_passive_scan(target: str) -> ScanResult:
     server_header_present = 1 if (_get_header(headers, "server") or "").strip() else 0
     x_powered_by_present = 1 if (_get_header(headers, "x-powered-by") or "").strip() else 0
 
-    # 9) CSP quality + HSTS strength
+    # 9) CSP quality + HSTS strength (v2 + v3)
     csp_unsafe_inline, csp_unsafe_eval, csp_default_self, csp_object_none = _csp_quality(csp_val)
-    hsts_max_age_days, hsts_include_subdomains, hsts_preload = _hsts_strength(hsts_val)
+    hsts_max_age_days, hsts_max_age_secs, hsts_long, hsts_include_subdomains, hsts_preload = _hsts_strength(hsts_val)
+    csp_has_default_src, csp_unsafe_inline_v3, csp_unsafe_eval_v3, csp_has_wildcard, csp_score = _csp_v3(csp_val)
+
+    # 9b) Referrer-Policy strict
+    referrer_policy_raw = _get_header(headers, "referrer-policy")
+    referrer_policy_strict = 0
+    if referrer_policy_raw and referrer_policy_raw.strip():
+        rp = referrer_policy_raw.strip().lower().split(";")[0].strip()
+        if rp in REFERRER_POLICY_STRICT:
+            referrer_policy_strict = 1
+
+    # 9c) Modern isolation headers
+    coop_val = _get_header(headers, "cross-origin-opener-policy")
+    coep_val = _get_header(headers, "cross-origin-embedder-policy")
+    corp_val = _get_header(headers, "cross-origin-resource-policy")
+    has_coop = 1 if (coop_val or "").strip() else 0
+    has_coep = 1 if (coep_val or "").strip() else 0
+    has_corp = 1 if (corp_val or "").strip() else 0
+
+    # 9d) CORS credentials
+    acac_val = _get_header(headers, "access-control-allow-credentials")
+    cors_allows_credentials = 1 if (acac_val or "").strip().lower() == "true" else 0
+    cors_wildcard_with_credentials = 1 if (cors_wildcard == 1 and cors_allows_credentials == 1) else 0
+
+    permissions_policy_raw = _get_header(headers, "permissions-policy") or _get_header(headers, "feature-policy")
+    powered_by_val = _get_header(headers, "x-powered-by")
 
     # 10) Status buckets
     code = final_status_code or 0
@@ -324,11 +387,13 @@ async def perform_passive_scan(target: str) -> ScanResult:
     status_is_4xx = 1 if 400 <= code < 500 else 0
     status_is_5xx = 1 if 500 <= code < 600 else 0
 
-    # 11) TLS (only when has_https); no weak_tls / tls_version_score in v2
+    # 11) TLS (v3: restore weak_tls, tls_version_score)
     tls_version = None
+    tls_version_score = None
+    weak_tls = 0
     certificate_days_left = None
-    tls_version_raw: Optional[str] = None
-    cipher: Optional[str] = None
+    tls_version_raw = None
+    cipher = None
     if has_https == 1 and final_url and "https" in final_url:
         h, p = _host_port_from_url(final_url)
         tls_result = _tls_probe(h, p, skip_verify)
@@ -336,13 +401,23 @@ async def perform_passive_scan(target: str) -> ScanResult:
         tls_version = tls_result.get("tls_version")
         cipher = tls_result.get("cipher")
         certificate_days_left = tls_result.get("certificate_days_left")
+        if tls_version is not None:
+            tls_version_score = TLS_VERSION_SCORE_MAP.get(tls_version)
+        if tls_version is not None and tls_version < 1.2:
+            weak_tls = 1
+        elif cipher and WEAK_CIPHER_PATTERNS.search(cipher):
+            weak_tls = 1
 
     features = ScanFeatures(
         has_https=has_https,
+        redirect_http_to_https=redirect_http_to_https,
         has_hsts=has_hsts,
         tls_version=tls_version,
+        tls_version_score=tls_version_score,
+        weak_tls=weak_tls,
         certificate_days_left=certificate_days_left,
         redirect_count=redirect_count,
+        final_status_code=final_status_code,
         response_time=response_time,
         has_csp=has_csp,
         has_x_frame=has_x_frame,
@@ -351,11 +426,22 @@ async def perform_passive_scan(target: str) -> ScanResult:
         csp_has_unsafe_eval=csp_unsafe_eval,
         csp_has_default_self=csp_default_self,
         csp_has_object_none=csp_object_none,
+        csp_has_default_src=csp_has_default_src,
+        csp_unsafe_inline=csp_unsafe_inline_v3,
+        csp_unsafe_eval=csp_unsafe_eval_v3,
+        csp_has_wildcard=csp_has_wildcard,
+        csp_score=csp_score,
         hsts_max_age_days=hsts_max_age_days,
+        hsts_max_age=hsts_max_age_secs,
+        hsts_long=hsts_long,
         hsts_include_subdomains=hsts_include_subdomains,
         hsts_preload=hsts_preload,
         has_referrer_policy=has_referrer_policy,
+        referrer_policy_strict=referrer_policy_strict,
         has_permissions_policy=has_permissions_policy,
+        has_coop=has_coop,
+        has_coep=has_coep,
+        has_corp=has_corp,
         server_header_present=server_header_present,
         x_powered_by_present=x_powered_by_present,
         cookie_secure=cookie_secure,
@@ -366,6 +452,8 @@ async def perform_passive_scan(target: str) -> ScanResult:
         httponly_cookie_ratio=httponly_cookie_ratio,
         samesite_cookie_ratio=samesite_cookie_ratio,
         cors_wildcard=cors_wildcard,
+        cors_allows_credentials=cors_allows_credentials,
+        cors_wildcard_with_credentials=cors_wildcard_with_credentials,
         status_is_2xx=status_is_2xx,
         status_is_3xx=status_is_3xx,
         status_is_4xx=status_is_4xx,
@@ -374,17 +462,31 @@ async def perform_passive_scan(target: str) -> ScanResult:
 
     evidence = ScanEvidence(
         hsts_value=hsts_val,
+        hsts_raw=hsts_val.strip() if hsts_val and hsts_val.strip() else None,
+        hsts_max_age=hsts_max_age_secs,
         csp_value=csp_val,
+        csp_raw=csp_val.strip() if csp_val and csp_val.strip() else None,
         x_frame_value=xfo_val,
         x_content_type_value=xct_val,
         acao_value=acao_val,
+        acac_value=acac_val.strip() if acac_val and acac_val.strip() else None,
         set_cookie_values=set_cookie_values,
         tls_version_raw=tls_version_raw,
         cipher=cipher,
         http_probe_status=http_probe_status,
         http_probe_location=http_probe_location,
         http_probe_error=http_probe_error,
+        referrer_policy_raw=referrer_policy_raw.strip() if referrer_policy_raw and referrer_policy_raw.strip() else None,
+        coop_value=coop_val.strip() if coop_val and coop_val.strip() else None,
+        coep_value=coep_val.strip() if coep_val and coep_val.strip() else None,
+        corp_value=corp_val.strip() if corp_val and corp_val.strip() else None,
+        permissions_policy_raw=permissions_policy_raw.strip() if permissions_policy_raw and permissions_policy_raw.strip() else None,
+        powered_by_value=powered_by_val.strip() if powered_by_val and powered_by_val.strip() else None,
     )
+
+    features_dict = features.model_dump()
+    evidence_dict = evidence.model_dump()
+    rule = compute_rule_score(features_dict, evidence_dict)
 
     return ScanResult(
         input_target=target,
@@ -397,4 +499,8 @@ async def perform_passive_scan(target: str) -> ScanResult:
         response_time=response_time,
         features=features,
         evidence=evidence,
+        rule_score=rule["rule_score"],
+        rule_grade=rule["rule_grade"],
+        rule_label=rule["rule_label"],
+        rule_reasons=rule["rule_reasons"],
     )

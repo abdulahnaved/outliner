@@ -15,4 +15,13 @@ lab/certs/localhost.key
 
 # Backend scan dataset (append-only, may contain sensitive targets)
 backend/data/scans.jsonl
+backend/data/scans.csv
+backend/data/failures.jsonl
+
+# v* scan runs, cleaned datasets, ML exports/results (generated artifacts)
+backend/data/scans.*.jsonl
+backend/data/scans.*.csv
+backend/data/failures.*.jsonl
+backend/data/archive/
+backend/data/ml/
 

@@ -128,6 +128,23 @@ def summarize_success(rows: list[dict], lines: list[str]) -> None:
         lines.append(f"response_time: min={min(resp_times):.4f}, median={statistics.median(resp_times):.4f}, max={max(resp_times):.4f}")
     else:
         lines.append("response_time: (no data)")
+    grades: dict[str, int] = defaultdict(int)
+    rule_scores: list[float] = []
+    for r in rows:
+        g = r.get("rule_grade") or "F"
+        grades[g] += 1
+        s = r.get("rule_score")
+        if s is not None:
+            rule_scores.append(float(s))
+    if rule_scores or any(grades.values()):
+        lines.append("")
+        lines.append("--- Rule grade (v3) ---")
+        for g in ("A", "B", "C", "D", "F"):
+            n = grades.get(g, 0)
+            if n or g == "A":
+                lines.append(f"  Grade {g}: {n} ({pct(n, total)})")
+        if rule_scores:
+            lines.append(f"rule_score: min={min(rule_scores):.1f}, median={statistics.median(rule_scores):.1f}, max={max(rule_scores):.1f}")
 
 
 def main() -> int:

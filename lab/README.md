@@ -57,6 +57,17 @@ export OUTLINER_ALLOW_LOCALHOST=true
 
 Then run the FastAPI backend and use the frontend (or `POST /api/fetch`) with targets like `https://localhost:8441`. See `backend/.env.example`.
 
+## 5. Batch scan (optional)
+
+With the backend and lab running, add lab URLs to `backend/data/targets.txt` (uncomment the lab lines), set `OUTLINER_ALLOW_LOCALHOST=true`, then:
+
+```bash
+cd backend && source .venv/bin/activate
+python scripts/batch_scan.py --limit 5
+```
+
+See root README for full batch scan options. Passive-only: no crawling; delay ≥ 1s; only headers/TLS metadata stored.
+
 ## Stop
 
 ```bash

@@ -20,22 +20,25 @@ CANONICAL_KEYS = [
     "scan_timestamp", "input_target", "normalized_host", "requested_url",
     "final_url", "final_status_code", "timing_ms", "redirect_count",
     "response_time", "is_blocked", "features", "evidence",
+    "rule_score", "rule_grade", "rule_label", "rule_reasons",
 ]
 
 CSV_FIELDS = [
     "input_target", "normalized_host", "requested_url", "final_url",
     "final_status_code", "timing_ms", "redirect_count", "response_time",
     "is_blocked", "scan_timestamp",
-    "feat_has_https", "feat_has_hsts", "feat_tls_version", "feat_certificate_days_left",
-    "feat_redirect_count", "feat_response_time",
+    "rule_score", "rule_grade", "rule_label",
+    "feat_has_https", "feat_redirect_http_to_https", "feat_has_hsts", "feat_tls_version", "feat_tls_version_score", "feat_weak_tls",
+    "feat_certificate_days_left", "feat_redirect_count", "feat_final_status_code", "feat_response_time",
     "feat_has_csp", "feat_has_x_frame", "feat_has_x_content_type",
-    "feat_csp_has_unsafe_inline", "feat_csp_has_unsafe_eval", "feat_csp_has_default_self", "feat_csp_has_object_none",
-    "feat_hsts_max_age_days", "feat_hsts_include_subdomains", "feat_hsts_preload",
-    "feat_has_referrer_policy", "feat_has_permissions_policy",
+    "feat_csp_has_default_src", "feat_csp_unsafe_inline", "feat_csp_unsafe_eval", "feat_csp_has_wildcard", "feat_csp_score",
+    "feat_hsts_max_age", "feat_hsts_long", "feat_hsts_include_subdomains", "feat_hsts_preload",
+    "feat_has_referrer_policy", "feat_referrer_policy_strict", "feat_has_permissions_policy",
+    "feat_has_coop", "feat_has_coep", "feat_has_corp",
     "feat_server_header_present", "feat_x_powered_by_present",
     "feat_cookie_secure", "feat_cookie_httponly", "feat_cookie_samesite",
     "feat_total_cookie_count", "feat_secure_cookie_ratio", "feat_httponly_cookie_ratio", "feat_samesite_cookie_ratio",
-    "feat_cors_wildcard",
+    "feat_cors_wildcard", "feat_cors_allows_credentials", "feat_cors_wildcard_with_credentials",
     "feat_status_is_2xx", "feat_status_is_3xx", "feat_status_is_4xx", "feat_status_is_5xx",
 ]
 
@@ -67,6 +70,9 @@ def normalize_record(raw: dict) -> dict | None:
     else:
         evidence = {}
 
+    rule_reasons = raw.get("rule_reasons")
+    if not isinstance(rule_reasons, list):
+        rule_reasons = []
     record = {
         "scan_timestamp": raw.get("scan_timestamp") or "",
         "input_target": raw.get("input_target", ""),
@@ -80,6 +86,10 @@ def normalize_record(raw: dict) -> dict | None:
         "is_blocked": raw.get("is_blocked", is_blocked),
         "features": features,
         "evidence": evidence,
+        "rule_score": float(raw.get("rule_score", 0.0)),
+        "rule_grade": raw.get("rule_grade", "F"),
+        "rule_label": int(raw.get("rule_label", 1)),
+        "rule_reasons": rule_reasons,
     }
     return {k: record[k] for k in CANONICAL_KEYS}
 
@@ -107,6 +117,9 @@ def record_to_csv_row(obj: dict) -> dict:
         "response_time": obj.get("response_time", 0),
         "is_blocked": obj.get("is_blocked", 0),
         "scan_timestamp": obj.get("scan_timestamp", ""),
+        "rule_score": obj.get("rule_score", 0.0),
+        "rule_grade": obj.get("rule_grade", "F"),
+        "rule_label": obj.get("rule_label", 1),
     }
     for k, v in (obj.get("features") or {}).items():
         row[f"feat_{k}"] = v

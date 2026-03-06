@@ -98,6 +98,19 @@ def main() -> int:
     resp_times = [r.get("response_time") for r in rows if r.get("response_time") is not None]
     resp_times = [float(x) for x in resp_times if x is not None]
 
+    rule_scores = [r.get("rule_score") for r in rows if r.get("rule_score") is not None]
+    rule_scores = [float(x) for x in rule_scores if x is not None]
+    rule_label_0 = sum(1 for r in rows if r.get("rule_label") == 0)
+    rule_label_1 = sum(1 for r in rows if r.get("rule_label") == 1)
+    grades: dict[str, int] = {}
+    for r in rows:
+        g = r.get("rule_grade") or "F"
+        grades[g] = grades.get(g, 0) + 1
+    csp_unsafe_inline = sum(1 for f in feats if f.get("csp_unsafe_inline") == 1 or f.get("csp_has_unsafe_inline") == 1)
+    csp_unsafe_eval = sum(1 for f in feats if f.get("csp_unsafe_eval") == 1 or f.get("csp_has_unsafe_eval") == 1)
+    hsts_long = sum(1 for f in feats if f.get("hsts_long") == 1)
+    cors_wildcard_creds = sum(1 for f in feats if f.get("cors_wildcard_with_credentials") == 1)
+
     print("=== Dataset summary ===")
     print(f"Input: {paths[0].name}" if len(paths) == 1 else f"Input (combined): {', '.join(p.name for p in paths)}")
     print(f"Total rows: {total}")
@@ -138,6 +151,21 @@ def main() -> int:
         print(f"response_time: min={min(resp_times):.4f}, median={statistics.median(resp_times):.4f}, max={max(resp_times):.4f}")
     else:
         print("response_time: (no data)")
+    print()
+    print("--- Rule score (v3) ---")
+    if rule_scores:
+        print(f"rule_score: min={min(rule_scores):.1f}, median={statistics.median(rule_scores):.1f}, max={max(rule_scores):.1f}")
+        print(f"% rule_label=0 (good): {pct(rule_label_0, total)}")
+        print(f"% rule_label=1 (risky): {pct(rule_label_1, total)}")
+        print("grade distribution:", dict(sorted(grades.items(), key=lambda x: ("FDCBA".index(x[0]) if x[0] in "FDCBA" else 99, x[0]))))
+    else:
+        print("rule_score: (no v3 rule data)")
+    print()
+    print("--- CSP / HSTS / CORS nuance ---")
+    print(f"% csp_unsafe_inline: {pct(csp_unsafe_inline, total)}")
+    print(f"% csp_unsafe_eval: {pct(csp_unsafe_eval, total)}")
+    print(f"% hsts_long (>=180d): {pct(hsts_long, total)}")
+    print(f"% cors_wildcard_with_credentials: {pct(cors_wildcard_creds, total)}")
 
     return 0
 

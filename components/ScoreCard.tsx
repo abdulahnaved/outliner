@@ -6,6 +6,13 @@ type ScoreCardProps = {
 export function ScoreCard({ score, grade }: ScoreCardProps) {
   const clamped = Math.max(0, Math.min(100, score))
 
+  // Blend from red (low) to blue (high) based on score.
+  const t = clamped / 100
+  const from = { r: 248, g: 113, b: 113 } // red-400-ish
+  const to = { r: 56, g: 189, b: 248 } // sky-400-ish
+  const mix = (a: number, b: number) => Math.round(a + (b - a) * t)
+  const barColor = `rgb(${mix(from.r, to.r)}, ${mix(from.g, to.g)}, ${mix(from.b, to.b)})`
+
   return (
     <section className="space-y-4 rounded border border-white/15 bg-black/20 p-4">
       <div className="flex items-baseline justify-between gap-4">
@@ -21,8 +28,8 @@ export function ScoreCard({ score, grade }: ScoreCardProps) {
       </div>
       <div className="h-1.5 w-full rounded-full bg-white/5">
         <div
-          className="h-full rounded-full bg-accent shadow-glow"
-          style={{ width: `${clamped}%` }}
+          className="h-full rounded-full shadow-glow"
+          style={{ width: `${clamped}%`, backgroundColor: barColor }}
         />
       </div>
       <p className="text-[11px] text-muted">

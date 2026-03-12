@@ -26,7 +26,7 @@ export function DomainInput() {
 
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/api/fetch', {
+      const res = await fetch('http://localhost:8000/api/scan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -39,7 +39,7 @@ export function DomainInput() {
       if (!res.ok) {
         const detail =
           (data && typeof data.detail === 'string' && data.detail) ||
-          'Fetch failed.'
+          'Scan failed.'
         setError(detail)
         return
       }
@@ -47,15 +47,14 @@ export function DomainInput() {
       if (data) {
         if (typeof window !== 'undefined') {
           try {
-            window.localStorage.setItem('outliner:lastFetch', JSON.stringify(data))
+            window.localStorage.setItem('outliner:lastScan', JSON.stringify(data))
           } catch {
             // ignore storage errors
           }
         }
 
-        const domain = String(data.normalized_host || trimmed)
-        const searchParams = new URLSearchParams({ domain })
-        router.push(`/report/demo?${searchParams.toString()}`)
+        const searchParams = new URLSearchParams({ target: trimmed })
+        router.push(`/report?${searchParams.toString()}`)
       }
     } catch {
       setError('Could not reach scanner backend.')

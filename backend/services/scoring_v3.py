@@ -35,8 +35,6 @@ def compute_rule_score(features: Dict[str, Any], evidence: Dict[str, Any] | None
         if cert_days is not None:
             if cert_days <= 0:
                 _penalize(15, "certificate expired or invalid")
-            elif cert_days <= 7:
-                _penalize(10, "certificate expires in ≤7 days")
             elif cert_days <= 30:
                 _penalize(5, "certificate expires in ≤30 days")
 
@@ -56,14 +54,22 @@ def compute_rule_score(features: Dict[str, Any], evidence: Dict[str, Any] | None
         _penalize(20, "no CSP")
     else:
         csp_score = features.get("csp_score")
+        weaknesses: List[str] = []
+        total_penalty = 0.0
         if csp_score is not None and csp_score < 0.7:
-            _penalize(10, "weak CSP (score < 0.7)")
+            total_penalty += 6
+            weaknesses.append("overall CSP score is low")
         if features.get("csp_unsafe_eval", 0) == 1:
-            _penalize(8, "CSP allows unsafe-eval")
+            total_penalty += 6
+            weaknesses.append("CSP allows unsafe-eval")
         if features.get("csp_unsafe_inline", 0) == 1:
-            _penalize(5, "CSP allows unsafe-inline")
+            total_penalty += 6
+            weaknesses.append("CSP allows unsafe-inline in scripts")
         if features.get("csp_has_wildcard", 0) == 1:
-            _penalize(6, "CSP uses wildcard (*)")
+            total_penalty += 6
+            weaknesses.append("CSP uses wildcard (*)")
+        if total_penalty > 0 and weaknesses:
+            _penalize(total_penalty, f"CSP weaknesses: {', '.join(weaknesses)}")
 
     # Clickjacking / MIME
     if features.get("has_x_frame", 0) == 0:

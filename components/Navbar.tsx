@@ -23,7 +23,6 @@ export function Navbar() {
             className="flex items-baseline gap-1 font-mono text-sm tracking-tight"
           >
             <span className="font-semibold text-red-500">outliner</span>
-            <span className="text-white">.</span>
           </Link>
         </div>
         <nav className="flex items-center justify-center gap-6 text-xs font-mono text-muted">

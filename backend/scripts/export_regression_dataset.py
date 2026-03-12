@@ -19,70 +19,19 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 import sys
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+from services.ml_features import build_feature_row  # noqa: E402
+
 DATA_DIR = BACKEND_DIR / "data"
 ML_DIR = DATA_DIR / "ml"
-DEFAULT_INPUT = DATA_DIR / "scans.v3_combined.cleaned.jsonl"
+DEFAULT_INPUT = DATA_DIR / "processed" / "scans.v3_combined.cleaned.jsonl"
 
-# Regression-safe feature keys only (raw security posture; no scoring proxies or labels).
-# One canonical name per concept; legacy aliases excluded.
-REGRESSION_SAFE_FEATURES = [
-    "has_https",
-    "redirect_http_to_https",
-    "has_hsts",
-    "tls_version",
-    "weak_tls",
-    "certificate_days_left",
-    "redirect_count",
-    "response_time",
-    "has_csp",
-    "csp_has_default_src",
-    "csp_unsafe_inline",
-    "csp_unsafe_eval",
-    "csp_has_wildcard",
-    "csp_has_object_none",
-    "hsts_max_age",
-    "hsts_long",
-    "hsts_include_subdomains",
-    "hsts_preload",
-    "has_referrer_policy",
-    "referrer_policy_strict",
-    "has_permissions_policy",
-    "has_coop",
-    "has_coep",
-    "has_corp",
-    "server_header_present",
-    "x_powered_by_present",
-    "cookie_secure",
-    "cookie_httponly",
-    "cookie_samesite",
-    "total_cookie_count",
-    "secure_cookie_ratio",
-    "httponly_cookie_ratio",
-    "samesite_cookie_ratio",
-    "cors_wildcard",
-    "cors_allows_credentials",
-    "cors_wildcard_with_credentials",
-    "status_is_2xx",
-    "status_is_3xx",
-    "status_is_4xx",
-    "status_is_5xx",
-]
-
-# Legacy/duplicate keys in source features that we do NOT use (canonical above used instead).
-EXCLUDED_FEATURE_ALIASES = frozenset({
-    "csp_has_unsafe_inline",
-    "csp_has_unsafe_eval",
-    "csp_has_default_self",
-    "hsts_max_age_days",
-    "final_status_code",  # use status_is_2xx/3xx/4xx/5xx only
-})
-
-# Excluded entirely (scoring proxies or labels).
+# Excluded entirely (scoring proxies or labels); for schema doc only.
 EXCLUDED_LEAKAGE = frozenset({
     "rule_score",
     "rule_label",
@@ -90,6 +39,13 @@ EXCLUDED_LEAKAGE = frozenset({
     "rule_reasons",
     "csp_score",
     "tls_version_score",
+})
+EXCLUDED_FEATURE_ALIASES = frozenset({
+    "csp_has_unsafe_inline",
+    "csp_has_unsafe_eval",
+    "csp_has_default_self",
+    "hsts_max_age_days",
+    "final_status_code",
 })
 
 
@@ -107,59 +63,14 @@ def load_jsonl(path: Path) -> list[dict]:
     return rows
 
 
-def get_canonical_value(features: dict, key: str):
-    """Return value for canonical key; support legacy alias where source uses old name."""
-    v = features.get(key)
-    if v is not None:
-        return v
-    if key == "csp_has_default_src":
-        return features.get("csp_has_default_self")
-    return None
-
-
 def flatten_row(row: dict) -> dict:
-    """Build one flat row: normalized_host, rule_score (target), is_blocked, then regression-safe features + derived."""
-    features = row.get("features") or {}
+    """Build one flat row: normalized_host, rule_score (target), is_blocked, then features from shared ml_features."""
     flat = {
         "normalized_host": row.get("normalized_host", ""),
         "rule_score": row.get("rule_score"),
         "is_blocked": row.get("is_blocked", 0),
     }
-    for key in REGRESSION_SAFE_FEATURES:
-        v = get_canonical_value(features, key)
-        if v is None:
-            v = features.get(key)
-        if v is None or (isinstance(v, float) and math.isnan(v)):
-            v = 0
-        flat[key] = v
-
-    # Derived / missing-value handling
-    tls = flat.get("tls_version")
-    if tls is None or (isinstance(tls, float) and math.isnan(tls)):
-        flat["tls_version"] = 0
-        flat["tls_version_missing"] = 1
-    else:
-        flat["tls_version_missing"] = 0
-
-    cert_days = flat.get("certificate_days_left")
-    if cert_days is None or (isinstance(cert_days, float) and math.isnan(cert_days)):
-        flat["certificate_days_left"] = 0
-        flat["cert_days_missing"] = 1
-    else:
-        flat["cert_days_missing"] = 0
-
-    try:
-        flat["cert_expired"] = 1 if float(flat["certificate_days_left"]) <= 0 else 0
-    except (TypeError, ValueError):
-        flat["cert_expired"] = 0
-
-    rt = flat.get("response_time")
-    try:
-        rt_f = float(rt) if rt is not None else 0.0
-        flat["response_time_log"] = math.log1p(max(0.0, rt_f))
-    except (TypeError, ValueError):
-        flat["response_time_log"] = 0.0
-
+    flat.update(build_feature_row(row))
     return flat
 
 
@@ -218,6 +129,7 @@ def main() -> int:
 
     input_path = args.input.resolve()
     if not input_path.exists():
+        # Fallback to legacy location (before data/processed/ reorg)
         alt = DATA_DIR / input_path.name
         if alt.exists():
             input_path = alt

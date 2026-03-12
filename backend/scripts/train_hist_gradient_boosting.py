@@ -15,10 +15,12 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 ML_DIR = BACKEND_DIR / "data" / "ml"
 RESULTS_DIR = ML_DIR / "results"
 PLOTS_DIR = RESULTS_DIR / "plots"
+ARTIFACTS_DIR = ML_DIR / "artifacts"
+MODEL_STEM = "hist_gradient_boosting_depth5"
 
-TRAIN_PATH = ML_DIR / "train_regression_full.csv"
-VAL_PATH = ML_DIR / "val_regression_full.csv"
-TEST_PATH = ML_DIR / "test_regression_full.csv"
+TRAIN_PATH = ML_DIR / "datasets" / "train_regression_full.csv"
+VAL_PATH = ML_DIR / "datasets" / "val_regression_full.csv"
+TEST_PATH = ML_DIR / "datasets" / "test_regression_full.csv"
 
 METADATA_COLUMNS = frozenset({"normalized_host"})
 TARGET_COLUMN = "rule_score"
@@ -66,6 +68,7 @@ def build_X_y(rows: list[dict], feature_columns: list[str]) -> tuple[list[list[f
 
 
 def main() -> int:
+    global TRAIN_PATH, VAL_PATH, TEST_PATH
     import numpy as np
     from sklearn.ensemble import HistGradientBoostingRegressor
     from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -73,8 +76,18 @@ def main() -> int:
 
     for p in (TRAIN_PATH, VAL_PATH, TEST_PATH):
         if not p.exists():
-            print(f"Missing: {p}", file=sys.stderr)
-            return 1
+            # Fallback if called before data/ml/datasets/ existed
+            legacy = ML_DIR / p.name
+            if legacy.exists():
+                if p == TRAIN_PATH:
+                    TRAIN_PATH = legacy
+                elif p == VAL_PATH:
+                    VAL_PATH = legacy
+                else:
+                    TEST_PATH = legacy
+            else:
+                print(f"Missing: {p}", file=sys.stderr)
+                return 1
 
     train_rows, fieldnames = load_csv(TRAIN_PATH)
     feature_columns = get_feature_columns(fieldnames)
@@ -96,6 +109,28 @@ def main() -> int:
         random_state=42,
     )
     model.fit(X_train, y_train)
+
+    # Save runtime artifacts for backend inference
+    ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    import joblib
+    joblib.dump(model, ARTIFACTS_DIR / f"{MODEL_STEM}.joblib")
+    with open(ARTIFACTS_DIR / f"{MODEL_STEM}_features.json", "w") as f:
+        json.dump(feature_columns, f, indent=2)
+    preprocessing = {
+        "target_column": TARGET_COLUMN,
+        "expected_feature_columns": feature_columns,
+        "excluded_from_training": ["normalized_host", "rule_score", "rule_grade", "rule_label", "rule_reasons", "csp_score", "tls_version_score"],
+        "missing_value_handling": {
+            "tls_version": "set to 0, add tls_version_missing=1",
+            "certificate_days_left": "set to 0, add cert_days_missing=1",
+            "cert_expired": "1 if certificate_days_left <= 0 else 0",
+            "response_time_log": "log1p(response_time)",
+        },
+        "derived_columns": ["tls_version_missing", "cert_days_missing", "cert_expired", "response_time_log"],
+    }
+    with open(ARTIFACTS_DIR / f"{MODEL_STEM}_preprocessing.json", "w") as f:
+        json.dump(preprocessing, f, indent=2)
+    print(f"Wrote artifacts to {ARTIFACTS_DIR}", file=sys.stderr)
 
     y_pred = model.predict(X_test)
     mae = float(mean_absolute_error(y_test, y_pred))

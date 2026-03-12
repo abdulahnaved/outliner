@@ -67,9 +67,9 @@ def build_X_y(rows: list[dict], feature_columns: list[str]) -> tuple[list[list[f
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Train regression baselines for rule_score")
-    ap.add_argument("--train", type=Path, default=ML_DIR / "train_regression_full.csv", help="Train CSV")
-    ap.add_argument("--val", type=Path, default=ML_DIR / "val_regression_full.csv", help="Val CSV")
-    ap.add_argument("--test", type=Path, default=ML_DIR / "test_regression_full.csv", help="Test CSV")
+    ap.add_argument("--train", type=Path, default=ML_DIR / "datasets" / "train_regression_full.csv", help="Train CSV")
+    ap.add_argument("--val", type=Path, default=ML_DIR / "datasets" / "val_regression_full.csv", help="Val CSV")
+    ap.add_argument("--test", type=Path, default=ML_DIR / "datasets" / "test_regression_full.csv", help="Test CSV")
     ap.add_argument("--out-dir", type=Path, default=RESULTS_DIR, help="Results directory")
     ap.add_argument("--results-suffix", type=str, default="", help="Suffix for output filenames (e.g. reachable -> regression_results_reachable.json)")
     args = ap.parse_args()
@@ -80,6 +80,7 @@ def main() -> int:
     def resolve(p: Path) -> Path:
         if p.exists():
             return p.resolve()
+        # Fallback for legacy layout without datasets/ subdir
         alt = ML_DIR / p.name
         return alt.resolve() if alt.exists() else p.resolve()
 

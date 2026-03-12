@@ -40,8 +40,8 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Train/val/test split for regression CSV")
-    ap.add_argument("--input", type=Path, default=ML_DIR / "dataset_regression_full.csv", help="Input regression CSV")
-    ap.add_argument("--out-dir", type=Path, default=ML_DIR, help="Output directory")
+    ap.add_argument("--input", type=Path, default=ML_DIR / "datasets" / "dataset_regression_full.csv", help="Input regression CSV")
+    ap.add_argument("--out-dir", type=Path, default=ML_DIR / "datasets", help="Output directory")
     ap.add_argument("--train-ratio", type=float, default=DEFAULT_TRAIN_RATIO, help="Train fraction")
     ap.add_argument("--val-ratio", type=float, default=DEFAULT_VAL_RATIO, help="Validation fraction")
     ap.add_argument("--seed", type=int, default=RANDOM_STATE, help="Random seed")
@@ -50,6 +50,7 @@ def main() -> int:
 
     input_path = args.input.resolve()
     if not input_path.exists():
+        # Fallback to legacy layout without datasets/ subdir
         alt = ML_DIR / input_path.name
         if alt.exists():
             input_path = alt

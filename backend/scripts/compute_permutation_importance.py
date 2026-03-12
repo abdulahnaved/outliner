@@ -18,8 +18,8 @@ ML_DIR = BACKEND_DIR / "data" / "ml"
 RESULTS_DIR = ML_DIR / "results"
 PLOTS_DIR = RESULTS_DIR / "plots"
 
-TRAIN_PATH = ML_DIR / "train_regression_full.csv"
-TEST_PATH = ML_DIR / "test_regression_full.csv"
+TRAIN_PATH = ML_DIR / "datasets" / "train_regression_full.csv"
+TEST_PATH = ML_DIR / "datasets" / "test_regression_full.csv"
 
 METADATA_COLUMNS = frozenset({"normalized_host"})
 TARGET_COLUMN = "rule_score"

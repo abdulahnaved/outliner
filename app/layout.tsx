@@ -12,7 +12,7 @@ const jetbrains = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'outliner — surface tells a story.',
+  title: 'outliner — surface tells a story',
   description: 'A calm, structured view of what your website exposes.'
 }
 

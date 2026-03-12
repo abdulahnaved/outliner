@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -115,6 +115,18 @@ class ScanEvidence(BaseModel):
   powered_by_value: Optional[str] = None
 
 
+# Allowed scan status values for graceful degradation.
+# (Partial removed: failed targets are always represented as scan_status="failed".)
+ScanStatus = Literal["success", "failed"]
+
+
+class ScoreContext(BaseModel):
+  distribution_scores: List[float] = Field(default_factory=list)
+  dataset_median: Optional[float] = None
+  dataset_average: Optional[float] = None
+  percentile: Optional[float] = None
+
+
 class ScanResult(BaseModel):
   input_target: str
   normalized_host: str
@@ -126,9 +138,22 @@ class ScanResult(BaseModel):
   response_time: float = 0.0
   features: ScanFeatures
   evidence: Optional[ScanEvidence] = None
-  rule_score: float = 0.0
-  rule_grade: str = "F"
-  rule_label: int = 1
+  # Rule-based score; null when scan failed or scoring not available
+  rule_score: Optional[float] = None
+  rule_grade: Optional[str] = None
+  rule_label: Optional[int] = None
   rule_reasons: List[str] = Field(default_factory=list)
+  # ML prediction (additive; scan succeeds even when prediction unavailable)
+  prediction_available: bool = False
+  predicted_rule_score: Optional[float] = None
+  ml_model_name: Optional[str] = None
+  ml_model_variant: Optional[str] = None
+  prediction_error: Optional[str] = None
+  # Scan status and error info (for failed/unreachable targets)
+  scan_status: ScanStatus = "success"
+  scan_error_type: Optional[str] = None  # timeout, dns_error, tls_error, connection_error, http_error, blocked, unknown
+  scan_error_message: Optional[str] = None
+  is_blocked: Optional[int] = None  # preserved when known (e.g. from partial/failed context)
+  score_context: Optional[ScoreContext] = None
 
 

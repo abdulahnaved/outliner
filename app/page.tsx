@@ -12,7 +12,6 @@ export default function LandingPage() {
           <div className="space-y-3">
             <h1 className="text-3xl font-semibold sm:text-4xl">
               <span className="text-red-500">outliner</span>
-              <span className="text-white">.</span>
             </h1>
             <h2 className="text-2xl text-muted sm:text-3xl">every surface tells a story</h2>
           </div>
@@ -97,7 +96,7 @@ export default function LandingPage() {
       <section id="contact" className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">contact</h2>
         <div className="space-y-2 text-sm text-muted">
-          <p>Say hello: contact@outliner.demo (static placeholder)</p>
+          <p>Say hello: contact@outlinerdemo (static placeholder)</p>
         </div>
         <Link
           href="/#scan"

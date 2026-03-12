@@ -66,6 +66,7 @@ async def api_fetch(payload: FetchRequest) -> FetchResponse:
 
 @app.post("/api/scan", response_model=ScanResult)
 async def api_scan(payload: ScanRequest) -> ScanResult:
+  # Only invalid target / SSRF raise; unreachable targets return 200 with scan_status="failed"
   try:
     result = await perform_passive_scan(payload.target)
   except ValueError as e:
@@ -75,11 +76,4 @@ async def api_scan(payload: ScanRequest) -> ScanResult:
     if "not allowed" in msg.lower():
       raise HTTPException(status_code=400, detail="Target not allowed")
     raise HTTPException(status_code=400, detail=msg)
-  except httpx.TimeoutException:
-    raise HTTPException(status_code=504, detail="Fetch timeout")
-  except httpx.HTTPError:
-    raise HTTPException(status_code=502, detail="Fetch failed")
-  except Exception as e:
-    raise HTTPException(status_code=500, detail=f"Scan error: {type(e).__name__}: {str(e)[:200]}")
-
   return result

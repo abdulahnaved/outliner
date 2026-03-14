@@ -79,8 +79,9 @@ def main() -> int:
 
     def score_bin(r: dict) -> int:
         try:
-            s = float(r.get("rule_score", 0) or 0)
-            return min(N_QUANTILE_BINS - 1, max(0, int(s / 20)))  # 0-20, 20-40, ..., 80-100
+            # Use rule_score_v2 (0-110) for stratification
+            s = float(r.get("rule_score_v2", r.get("rule_score", 0)) or 0)
+            return min(N_QUANTILE_BINS - 1, max(0, int(s / 22)))  # 0-22, 22-44, ..., 88-110
         except (TypeError, ValueError):
             return 0
 

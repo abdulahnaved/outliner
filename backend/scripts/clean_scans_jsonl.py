@@ -12,6 +12,13 @@ import sys
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+try:
+    from services.scoring_v2 import compute_rule_score_v2
+except ImportError:
+    compute_rule_score_v2 = None
+
 DEFAULT_JSONL = BACKEND_DIR / "data" / "scans.jsonl"
 DEFAULT_CLEANED_JSONL = BACKEND_DIR / "data" / "scans.cleaned.jsonl"
 DEFAULT_CLEANED_CSV = BACKEND_DIR / "data" / "scans.cleaned.csv"
@@ -21,6 +28,7 @@ CANONICAL_KEYS = [
     "final_url", "final_status_code", "timing_ms", "redirect_count",
     "response_time", "is_blocked", "features", "evidence",
     "rule_score", "rule_grade", "rule_label", "rule_reasons",
+    "rule_score_v2", "rule_grade_v2", "rule_label_v2", "rule_reasons_v2",
 ]
 
 CSV_FIELDS = [
@@ -28,6 +36,7 @@ CSV_FIELDS = [
     "final_status_code", "timing_ms", "redirect_count", "response_time",
     "is_blocked", "scan_timestamp",
     "rule_score", "rule_grade", "rule_label",
+    "rule_score_v2", "rule_grade_v2", "rule_label_v2",
     "feat_has_https", "feat_redirect_http_to_https", "feat_has_hsts", "feat_tls_version", "feat_tls_version_score", "feat_weak_tls",
     "feat_certificate_days_left", "feat_redirect_count", "feat_final_status_code", "feat_response_time",
     "feat_has_csp", "feat_has_x_frame", "feat_has_x_content_type",
@@ -73,6 +82,24 @@ def normalize_record(raw: dict) -> dict | None:
     rule_reasons = raw.get("rule_reasons")
     if not isinstance(rule_reasons, list):
         rule_reasons = []
+    # Compute v2 from features (canonical label set)
+    if compute_rule_score_v2 is not None:
+        try:
+            v2 = compute_rule_score_v2(features, evidence, include_debug=False)
+            rule_score_v2 = v2["rule_score_v2"]
+            rule_grade_v2 = v2["rule_grade_v2"]
+            rule_label_v2 = v2["rule_label_v2"]
+            rule_reasons_v2 = v2.get("rule_reasons_v2") or []
+        except Exception:
+            rule_score_v2 = 0.0
+            rule_grade_v2 = "F"
+            rule_label_v2 = 1
+            rule_reasons_v2 = []
+    else:
+        rule_score_v2 = 0.0
+        rule_grade_v2 = "F"
+        rule_label_v2 = 1
+        rule_reasons_v2 = []
     record = {
         "scan_timestamp": raw.get("scan_timestamp") or "",
         "input_target": raw.get("input_target", ""),
@@ -90,6 +117,10 @@ def normalize_record(raw: dict) -> dict | None:
         "rule_grade": raw.get("rule_grade", "F"),
         "rule_label": int(raw.get("rule_label", 1)),
         "rule_reasons": rule_reasons,
+        "rule_score_v2": rule_score_v2,
+        "rule_grade_v2": rule_grade_v2,
+        "rule_label_v2": rule_label_v2,
+        "rule_reasons_v2": rule_reasons_v2,
     }
     return {k: record[k] for k in CANONICAL_KEYS}
 
@@ -120,6 +151,9 @@ def record_to_csv_row(obj: dict) -> dict:
         "rule_score": obj.get("rule_score", 0.0),
         "rule_grade": obj.get("rule_grade", "F"),
         "rule_label": obj.get("rule_label", 1),
+        "rule_score_v2": obj.get("rule_score_v2", 0.0),
+        "rule_grade_v2": obj.get("rule_grade_v2", "F"),
+        "rule_label_v2": obj.get("rule_label_v2", 1),
     }
     for k, v in (obj.get("features") or {}).items():
         row[f"feat_{k}"] = v

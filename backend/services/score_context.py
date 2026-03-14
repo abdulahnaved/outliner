@@ -45,7 +45,8 @@ def load_distribution_scores() -> list[float]:
                 row = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            score = _coerce_score(row.get("rule_score"))
+            # Prefer v2 (primary label set) for distribution/percentile
+            score = _coerce_score(row.get("rule_score_v2")) or _coerce_score(row.get("rule_score"))
             if score is None:
                 continue
             scores.append(score)

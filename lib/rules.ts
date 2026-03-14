@@ -123,7 +123,9 @@ export const RULES: Rule[] = [
     severity: 'MED',
     description: 'The CSP includes \'unsafe-inline\', increasing XSS risk.',
     recommendation: 'Remove unsafe-inline by using nonces/hashes and moving inline scripts/styles to external files.',
-    condition: (f) => isOn(f.has_csp) && isOn(f.csp_unsafe_inline)
+    // We have two flags in features: legacy csp_unsafe_inline and csp_has_unsafe_inline (v2 parser).
+    // Treat either as a signal that unsafe-inline is allowed somewhere.
+    condition: (f) => isOn(f.has_csp) && (isOn(f.csp_unsafe_inline) || isOn(f.csp_has_unsafe_inline))
   },
   {
     id: 'csp_unsafe_eval',
@@ -132,7 +134,19 @@ export const RULES: Rule[] = [
     severity: 'MED',
     description: 'The CSP includes \'unsafe-eval\', which can enable dangerous code execution paths.',
     recommendation: 'Remove unsafe-eval by avoiding eval-like patterns and using safer libraries/configurations.',
-    condition: (f) => isOn(f.has_csp) && isOn(f.csp_unsafe_eval)
+    // Same dual-flag pattern as unsafe-inline.
+    condition: (f) => isOn(f.has_csp) && (isOn(f.csp_unsafe_eval) || isOn(f.csp_has_unsafe_eval))
+  },
+  {
+    id: 'csp_low_score',
+    title: 'Content Security Policy is weak overall',
+    category: 'content_security',
+    severity: 'MED',
+    description:
+      'The overall CSP quality score is low, indicating a noisy or incomplete policy that may not provide strong protection.',
+    recommendation:
+      'Tighten the CSP by denying-by-default (default-src \'none\'), locking down script-src and object-src, and removing unnecessary allowances.',
+    condition: (f) => isOn(f.has_csp) && num(f.csp_score, 1) < 0.7
   },
 
   // Cookies (explicit rules requested)

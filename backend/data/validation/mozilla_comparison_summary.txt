@@ -1,0 +1,9 @@
+Mozilla comparison summary
+==========================
+Total domains in sample: 22
+Domains with both scores: 17
+Domains with both grades: 17
+Mean score_difference (our_score - mozilla_score): 4.00
+same_band grades: 4/17 (23.5%)
+within ±1 band: 9/17 (52.9%)
+≥2 band mismatches: 8/17 (47.1%)

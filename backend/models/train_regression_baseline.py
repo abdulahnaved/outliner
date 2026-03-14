@@ -21,7 +21,7 @@ RESULTS_DIR = ML_DIR / "results"
 PLOTS_DIR = RESULTS_DIR / "plots"
 
 METADATA_COLUMNS = frozenset({"normalized_host"})
-TARGET_COLUMN = "rule_score"
+TARGET_COLUMN = "rule_score_v2"
 
 
 def load_csv(path: Path) -> tuple[list[dict], list[str]]:
@@ -175,7 +175,7 @@ def main() -> int:
         pred_path = args.out_dir / f"predictions_{model_name}{file_suffix}.csv"
         with open(pred_path, "w", newline="") as f:
             w = csv.writer(f)
-            w.writerow(["normalized_host", "actual_rule_score", "predicted_rule_score", "absolute_error"])
+            w.writerow(["normalized_host", "actual_rule_score_v2", "predicted_rule_score_v2", "absolute_error"])
             for r, actual, pred in zip(test_rows, y_test, test_pred):
                 err = float(abs(actual - pred))
                 w.writerow([r.get("normalized_host", ""), actual, float(pred), err])
@@ -211,8 +211,8 @@ def main() -> int:
             host = row.get("normalized_host", "")
             r = {
                 "normalized_host": host,
-                "actual_rule_score": row.get("actual_rule_score"),
-                "predicted_rule_score": row.get("predicted_rule_score"),
+                "actual_rule_score_v2": row.get("actual_rule_score_v2", row.get("actual_rule_score")),
+                "predicted_rule_score_v2": row.get("predicted_rule_score_v2", row.get("predicted_rule_score")),
                 "absolute_error": row.get("absolute_error"),
             }
             orig = by_host.get(host, {})
@@ -222,7 +222,7 @@ def main() -> int:
         err_path = args.out_dir / f"regression_biggest_errors{file_suffix}.csv"
         with open(err_path, "w", newline="") as f:
             if worst:
-                cols = ["normalized_host", "actual_rule_score", "predicted_rule_score", "absolute_error"] + feature_columns[:8]
+                cols = ["normalized_host", "actual_rule_score_v2", "predicted_rule_score_v2", "absolute_error"] + feature_columns[:8]
                 w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
                 w.writeheader()
                 w.writerows(worst)
@@ -239,9 +239,9 @@ def main() -> int:
         # Rule score distribution
         fig, ax = plt.subplots()
         ax.hist(y_test, bins=20, edgecolor="black", alpha=0.7)
-        ax.set_xlabel("rule_score")
+        ax.set_xlabel("rule_score_v2")
         ax.set_ylabel("Count")
-        ax.set_title("Test set: rule_score distribution" + (f" ({suffix})" if suffix else ""))
+        ax.set_title("Test set: rule_score_v2 distribution" + (f" ({suffix})" if suffix else ""))
         fig.savefig(PLOTS_DIR / f"rule_score_distribution{file_suffix}.png", dpi=150, bbox_inches="tight")
         plt.close()
         print(f"Wrote {PLOTS_DIR / f'rule_score_distribution{file_suffix}.png'}", file=sys.stderr)
@@ -251,13 +251,13 @@ def main() -> int:
             # Actual vs predicted
             fig, ax = plt.subplots()
             ax.scatter(y_test, test_pred, alpha=0.5)
-            ax.plot([0, 100], [0, 100], "r--", label="y=x")
-            ax.set_xlabel("Actual rule_score")
-            ax.set_ylabel("Predicted rule_score")
+            ax.plot([0, 110], [0, 110], "r--", label="y=x")
+            ax.set_xlabel("Actual rule_score_v2")
+            ax.set_ylabel("Predicted rule_score_v2")
             ax.set_title(f"Actual vs predicted — {model_name}" + (f" ({suffix})" if suffix else ""))
             ax.legend()
-            ax.set_xlim(0, 100)
-            ax.set_ylim(0, 100)
+            ax.set_xlim(0, 110)
+            ax.set_ylim(0, 110)
             fig.savefig(PLOTS_DIR / f"actual_vs_predicted_{model_name}{file_suffix}.png", dpi=150, bbox_inches="tight")
             plt.close()
 
@@ -266,7 +266,7 @@ def main() -> int:
             residuals = y_test - test_pred
             ax.scatter(test_pred, residuals, alpha=0.5)
             ax.axhline(0, color="r", linestyle="--")
-            ax.set_xlabel("Predicted rule_score")
+            ax.set_xlabel("Predicted rule_score_v2")
             ax.set_ylabel("Residual")
             ax.set_title(f"Residual plot — {model_name}" + (f" ({suffix})" if suffix else ""))
             fig.savefig(PLOTS_DIR / f"residuals_{model_name}{file_suffix}.png", dpi=150, bbox_inches="tight")

@@ -34,6 +34,7 @@ DEFAULT_INPUT = DATA_DIR / "processed" / "scans.v3_combined.cleaned.jsonl"
 # Excluded entirely (scoring proxies or labels); for schema doc only.
 EXCLUDED_LEAKAGE = frozenset({
     "rule_score",
+    "rule_score_v2",
     "rule_label",
     "rule_grade",
     "rule_reasons",
@@ -64,10 +65,10 @@ def load_jsonl(path: Path) -> list[dict]:
 
 
 def flatten_row(row: dict) -> dict:
-    """Build one flat row: normalized_host, rule_score (target), is_blocked, then features from shared ml_features."""
+    """Build one flat row: normalized_host, rule_score_v2 (target), is_blocked, then features from shared ml_features."""
     flat = {
         "normalized_host": row.get("normalized_host", ""),
-        "rule_score": row.get("rule_score"),
+        "rule_score_v2": row.get("rule_score_v2"),
         "is_blocked": row.get("is_blocked", 0),
     }
     flat.update(build_feature_row(row))
@@ -75,10 +76,10 @@ def flatten_row(row: dict) -> dict:
 
 
 def get_export_columns(flat_rows: list[dict]) -> list[str]:
-    """Column order: metadata, target, then feature columns (including derived)."""
+    """Column order: metadata, target (rule_score_v2), then feature columns (including derived)."""
     if not flat_rows:
         return []
-    meta_target = ["normalized_host", "rule_score", "is_blocked"]
+    meta_target = ["normalized_host", "rule_score_v2", "is_blocked"]
     rest = sorted(k for k in flat_rows[0].keys() if k not in meta_target)
     return meta_target + rest
 
@@ -100,9 +101,9 @@ def write_csv(path: Path, rows: list[dict], columns: list[str]) -> None:
 
 def build_schema(export_columns: list[str]) -> dict:
     return {
-        "target_column": "rule_score",
+        "target_column": "rule_score_v2",
         "metadata_columns": ["normalized_host", "is_blocked"],
-        "included_feature_columns": [c for c in export_columns if c not in ("normalized_host", "rule_score", "is_blocked")],
+        "included_feature_columns": [c for c in export_columns if c not in ("normalized_host", "rule_score_v2", "is_blocked")],
         "excluded_columns": {
             "labels_and_proxies": list(EXCLUDED_LEAKAGE),
             "legacy_aliases": list(EXCLUDED_FEATURE_ALIASES),

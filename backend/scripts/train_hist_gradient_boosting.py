@@ -23,7 +23,7 @@ VAL_PATH = ML_DIR / "datasets" / "val_regression_full.csv"
 TEST_PATH = ML_DIR / "datasets" / "test_regression_full.csv"
 
 METADATA_COLUMNS = frozenset({"normalized_host"})
-TARGET_COLUMN = "rule_score"
+TARGET_COLUMN = "rule_score_v2"
 
 
 def load_csv(path: Path) -> tuple[list[dict], list[str]]:
@@ -119,7 +119,7 @@ def main() -> int:
     preprocessing = {
         "target_column": TARGET_COLUMN,
         "expected_feature_columns": feature_columns,
-        "excluded_from_training": ["normalized_host", "rule_score", "rule_grade", "rule_label", "rule_reasons", "csp_score", "tls_version_score"],
+        "excluded_from_training": ["normalized_host", "rule_score", "rule_score_v2", "rule_grade", "rule_label", "rule_reasons", "csp_score", "tls_version_score"],
         "missing_value_handling": {
             "tls_version": "set to 0, add tls_version_missing=1",
             "certificate_days_left": "set to 0, add cert_days_missing=1",
@@ -181,13 +181,13 @@ def main() -> int:
         # Actual vs predicted
         fig, ax = plt.subplots()
         ax.scatter(y_test, y_pred, alpha=0.5)
-        ax.plot([0, 100], [0, 100], "r--", label="y=x")
-        ax.set_xlabel("actual_score")
-        ax.set_ylabel("predicted_score")
-        ax.set_title("HistGradientBoostingRegressor (max_depth=5) — Actual vs Predicted")
+        ax.plot([0, 110], [0, 110], "r--", label="y=x")
+        ax.set_xlabel("actual rule_score_v2")
+        ax.set_ylabel("predicted rule_score_v2")
+        ax.set_title("HistGradientBoostingRegressor (max_depth=5) — Actual vs Predicted (v2)")
         ax.legend()
-        ax.set_xlim(0, 100)
-        ax.set_ylim(0, 100)
+        ax.set_xlim(0, 110)
+        ax.set_ylim(0, 110)
         fig.savefig(PLOTS_DIR / "actual_vs_predicted_hist_gradient_boosting_depth5.png", dpi=150, bbox_inches="tight")
         plt.close()
         print("Wrote actual_vs_predicted_hist_gradient_boosting_depth5.png", file=sys.stderr)

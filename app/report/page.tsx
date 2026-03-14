@@ -25,10 +25,17 @@ type ScanResult = {
   response_time?: number
   features: Record<string, unknown>
   evidence?: Record<string, unknown> | null
+  /** Primary display score (v2); backend sets rule_score = rule_score_v2 */
   rule_score?: number | null
   rule_grade?: string | null
   rule_label?: number | null
   rule_reasons?: string[]
+  rule_score_v2?: number | null
+  rule_grade_v2?: string | null
+  rule_label_v2?: number | null
+  rule_reasons_v2?: string[]
+  rule_score_v3?: number | null
+  rule_grade_v3?: string | null
   prediction_available?: boolean
   predicted_rule_score?: number | null
   ml_model_name?: string | null

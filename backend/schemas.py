@@ -138,11 +138,21 @@ class ScanResult(BaseModel):
   response_time: float = 0.0
   features: ScanFeatures
   evidence: Optional[ScanEvidence] = None
-  # Rule-based score; null when scan failed or scoring not available
+  # Rule-based score (v2 = primary; null when scan failed or scoring not available)
   rule_score: Optional[float] = None
   rule_grade: Optional[str] = None
   rule_label: Optional[int] = None
   rule_reasons: List[str] = Field(default_factory=list)
+  # V2 explicit fields (same as above when v2 is primary; kept for API clarity)
+  rule_score_v2: Optional[float] = None
+  rule_grade_v2: Optional[str] = None
+  rule_label_v2: Optional[int] = None
+  rule_reasons_v2: List[str] = Field(default_factory=list)
+  # V3 legacy (optional, for comparison/debugging)
+  rule_score_v3: Optional[float] = None
+  rule_grade_v3: Optional[str] = None
+  rule_label_v3: Optional[int] = None
+  rule_reasons_v3: List[str] = Field(default_factory=list)
   # ML prediction (additive; scan succeeds even when prediction unavailable)
   prediction_available: bool = False
   predicted_rule_score: Optional[float] = None

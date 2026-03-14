@@ -19,6 +19,7 @@ import httpx
 from schemas import ScanEvidence, ScanFeatures, ScanResult
 
 from .scoring_v3 import compute_rule_score
+from .scoring_v2 import compute_rule_score_v2
 from .ml_inference import predict_rule_score as ml_predict_rule_score
 from .score_context import get_score_context
 
@@ -106,7 +107,12 @@ TLS_VERSION_MAP = {
 }
 TLS_VERSION_SCORE_MAP = {1.0: 0.0, 1.1: 0.2, 1.2: 0.7, 1.3: 1.0}
 HSTS_LONG_SECONDS = 15552000  # 180 days
-REFERRER_POLICY_STRICT = {"no-referrer", "strict-origin", "strict-origin-when-cross-origin"}
+REFERRER_POLICY_STRICT = {
+    "no-referrer",
+    "same-origin",
+    "strict-origin",
+    "strict-origin-when-cross-origin",
+}
 CSP_DIRECTIVES_FOR_WILDCARD = (
     "default-src", "script-src", "style-src", "img-src",
     "connect-src", "frame-src", "child-src", "object-src",
@@ -461,8 +467,10 @@ async def perform_passive_scan(target: str) -> ScanResult:
         referrer_policy_raw = _get_header(headers, "referrer-policy")
         referrer_policy_strict = 0
         if referrer_policy_raw and referrer_policy_raw.strip():
-            rp = referrer_policy_raw.strip().lower().split(";")[0].strip()
-            if rp in REFERRER_POLICY_STRICT:
+            # Allow comma-separated policies; mark strict if any token is in REFERRER_POLICY_STRICT.
+            rp_value = referrer_policy_raw.strip().lower().split(";", 1)[0]
+            tokens = [t.strip() for t in rp_value.split(",") if t.strip()]
+            if any(t in REFERRER_POLICY_STRICT for t in tokens):
                 referrer_policy_strict = 1
 
         # 9c) Modern isolation headers
@@ -587,7 +595,9 @@ async def perform_passive_scan(target: str) -> ScanResult:
 
         features_dict = features.model_dump()
         evidence_dict = evidence.model_dump()
-        rule = compute_rule_score(features_dict, evidence_dict)
+        rule_v3 = compute_rule_score(features_dict, evidence_dict)
+        rule_v2 = compute_rule_score_v2(features_dict, evidence_dict, include_debug=False)
+        # V2 is primary (display score); v3 kept for comparison
         result = ScanResult(
             input_target=target,
             normalized_host=normalized.normalized_host,
@@ -599,13 +609,21 @@ async def perform_passive_scan(target: str) -> ScanResult:
             response_time=response_time,
             features=features,
             evidence=evidence,
-            rule_score=rule["rule_score"],
-            rule_grade=rule["rule_grade"],
-            rule_label=rule["rule_label"],
-            rule_reasons=rule["rule_reasons"],
+            rule_score=rule_v2["rule_score_v2"],
+            rule_grade=rule_v2["rule_grade_v2"],
+            rule_label=rule_v2["rule_label_v2"],
+            rule_reasons=rule_v2.get("rule_reasons_v2") or [],
+            rule_score_v2=rule_v2["rule_score_v2"],
+            rule_grade_v2=rule_v2["rule_grade_v2"],
+            rule_label_v2=rule_v2["rule_label_v2"],
+            rule_reasons_v2=rule_v2.get("rule_reasons_v2") or [],
+            rule_score_v3=rule_v3["rule_score"],
+            rule_grade_v3=rule_v3["rule_grade"],
+            rule_label_v3=rule_v3["rule_label"],
+            rule_reasons_v3=rule_v3.get("rule_reasons") or [],
             scan_status="success",
             is_blocked=None,
-            score_context=get_score_context(rule["rule_score"]),
+            score_context=get_score_context(rule_v2["rule_score_v2"]),
         )
         try:
             ml_out = ml_predict_rule_score(result.model_dump())

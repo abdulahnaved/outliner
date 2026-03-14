@@ -8,8 +8,15 @@ type Props = {
   percentile?: number | null
 }
 
+const AXIS_MAX = 110
+
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
+}
+
+/** Position 0–110 as percentage (0–100) for the axis. */
+function axisPct(score: number) {
+  return (clamp(score, 0, AXIS_MAX) / AXIS_MAX) * 100
 }
 
 function median(values: number[]) {
@@ -39,7 +46,7 @@ export function ScoreContext({
   percentile: percentileProp
 }: Props) {
   const dist = (distributionScores && distributionScores.length > 0 ? distributionScores : []).map((s) =>
-    clamp(s, 0, 100)
+    clamp(Number(s), 0, AXIS_MAX)
   )
 
   const med = typeof datasetMedian === 'number' ? datasetMedian : median(dist)
@@ -75,26 +82,27 @@ export function ScoreContext({
       </div>
 
       <div className="relative h-10 rounded border border-white/10 bg-black/15 px-3">
-        <div className="absolute left-3 right-3 top-1/2 h-px -translate-y-1/2 bg-white/10" />
-
-        {dist.map((s, idx) => (
+        {/* Axis track: 0–110 scale; right margin keeps the red dot inside when score is 110 */}
+        <div className="absolute left-3 right-10 top-0 h-full">
+          <div className="absolute inset-0 top-1/2 h-px -translate-y-1/2 bg-white/10" />
+          {dist.map((s, idx) => (
+            <span
+              key={`${s}-${idx}`}
+              className="absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/25"
+              style={{ left: `${axisPct(s)}%` }}
+              aria-hidden
+            />
+          ))}
           <span
-            key={`${s}-${idx}`}
-            className="absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-white/25"
-            style={{ left: `${clamp(s, 0, 100)}%` }}
-            aria-hidden
+            className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600 shadow-glow"
+            style={{ left: `${axisPct(currentScore)}%` }}
+            aria-label="current site score"
           />
-        ))}
-
-        <span
-          className="absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-red-400 shadow-glow"
-          style={{ left: `${clamp(currentScore, 0, 100)}%` }}
-          aria-label="current site score"
-        />
-
-        <div className="absolute -bottom-5 left-3 right-3 flex justify-between text-[10px] text-muted">
+        </div>
+        <div className="absolute -bottom-5 left-3 right-10 flex justify-between text-[10px] text-muted">
           <span>0</span>
-          <span>100</span>
+          <span style={{ position: 'absolute', left: `${axisPct(100)}%`, transform: 'translateX(-50%)' }}>100</span>
+          <span>110</span>
         </div>
       </div>
     </section>

@@ -12,7 +12,7 @@ export function IssueList({ issues }: Props) {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">issues</h2>
+      <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">recommendations</h2>
       <div className="space-y-3">
         {issues.map((issue) => (
           <IssueCard

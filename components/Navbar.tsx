@@ -6,7 +6,8 @@ export const navHeight = NAV_HEIGHT
 
 const sections = [
   { href: '/about', label: 'ABOUT' },
-  { href: '/#method', label: 'METHOD' },
+  { href: '/method', label: 'METHOD' },
+  { href: '/#story', label: 'STORY' },
   { href: '/#contact', label: 'CONTACT' }
 ]
 

@@ -102,3 +102,43 @@ evidence that our feature extraction is wrong. Our v2 scoring and features for `
 the headers observed via browser-like curl probes, while MDN appears to be grading a different
 edge response.
 
+### Known discrepancy: `kingcounty.gov` (MDN 0 vs our 38)
+
+For the same host we see **MDN grade F, score 0/100** vs **our grade D, rule score 38**. Here we see
+the **same** final response (both scanners see no CSP, no HSTS, cookies without Secure/HttpOnly/SameSite,
+no Referrer-Policy, etc.); the gap is entirely due to **scoring design**, not which response was scanned.
+
+**Why MDN gives 0**
+
+MDN starts at 100 and applies **uncapped** penalties (HTTP Observatory modifiers):
+
+| Test | Modifier | Notes |
+|------|----------|--------|
+| CSP not implemented | −25 | |
+| Session cookie without Secure | −40 | Single heavy hit for session cookie over HTTP / no Secure |
+| HSTS not implemented | −20 | |
+| X-Frame-Options not implemented | −20 | |
+| SRI: external scripts over HTTPS but no SRI | −5 | |
+| X-Content-Type-Options not implemented | −5 | |
+
+Total **−115** → score = max(0, 100 − 115) = **0**.
+
+**Why we give 38 (D)**
+
+- We use **category caps** (e.g. transport 25, content 25, cookies 20, browser 15, cross-origin 15).
+  Penalties cannot pile up without bound.
+- We do **not** model:
+  - **X-Frame-Options** as a separate failing test (no −20 equivalent).
+  - **X-Content-Type-Options** as a separate test (no −5).
+  - **Subresource Integrity (SRI)** (we do not fetch or parse HTML for script tags).
+- Cookie penalties are spread and capped under the cookies category (e.g. Secure, HttpOnly, SameSite),
+  not a single −40 for “session cookie without Secure”.
+
+So for the same set of missing headers and weak cookies, MDN’s uncapped sum drives the score to 0,
+while our capped, category-based v2 leaves the site at 38 (D). This is a **deliberate design difference**:
+we avoid letting one or two severe tests (e.g. session cookie + CSP + HSTS) wipe the entire score,
+so the grade still reflects that HTTPS and redirect work and CORS is not wide open. If we wanted
+closer alignment to MDN for sites like kingcounty.gov, we would need to either add X-Frame-Options /
+X-Content-Type-Options / SRI and/or increase or uncap certain penalties (at the cost of more
+sites clustering near 0).
+

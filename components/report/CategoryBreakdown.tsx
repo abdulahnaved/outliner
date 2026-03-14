@@ -1,6 +1,6 @@
 'use client'
 
-type Strength = 'Strong' | 'Moderate' | 'Weak'
+type Strength = 'Strong' | 'Moderate' | 'Weak' | 'Neutral'
 
 type Props = {
   categories: {
@@ -13,6 +13,7 @@ type Props = {
 function strengthBadge(strength: Strength) {
   if (strength === 'Strong') return 'border-teal-300/50 bg-teal-300/10 text-teal-200'
   if (strength === 'Moderate') return 'border-yellow-300/50 bg-yellow-300/10 text-yellow-200'
+  if (strength === 'Neutral') return 'border-blue-400/50 bg-blue-400/10 text-blue-200'
   return 'border-red-400/60 bg-red-500/10 text-red-300'
 }
 

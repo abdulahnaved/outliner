@@ -6,7 +6,6 @@ import { FormEvent, useState } from 'react'
 export function DomainInput() {
   const router = useRouter()
   const [value, setValue] = useState('')
-  const [checked, setChecked] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -17,10 +16,6 @@ export function DomainInput() {
     const trimmed = value.trim()
     if (!trimmed) {
       setError('Enter a domain or URL to scan.')
-      return
-    }
-    if (!checked) {
-      setError('Confirm you own the domain or have permission to test it.')
       return
     }
 
@@ -83,15 +78,6 @@ export function DomainInput() {
           {loading ? 'FETCHING…' : 'RUN SCAN'}
         </button>
       </div>
-      <label className="flex items-start gap-2 text-[11px] text-muted">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => setChecked(e.target.checked)}
-          className="mt-[2px] h-3.5 w-3.5 rounded border border-white/20 bg-black/40 text-accent focus:ring-0"
-        />
-        <span>I own this domain or have permission to test it.</span>
-      </label>
       {error && <p className="text-[11px] text-red-400">{error}</p>}
     </form>
   )

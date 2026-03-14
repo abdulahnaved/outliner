@@ -190,6 +190,24 @@ export const RULES: Rule[] = [
     dedupeKey: 'referrer_policy'
   },
   {
+    id: 'x_frame_options_missing',
+    title: 'X-Frame-Options missing',
+    category: 'policy_headers',
+    severity: 'MED',
+    description: 'Without X-Frame-Options or CSP frame-ancestors, the site may be embedded in iframes, enabling clickjacking.',
+    recommendation: 'Send X-Frame-Options: DENY or SAMEORIGIN, or use CSP frame-ancestors to restrict embedding.',
+    condition: (f) => !isOn(f.has_x_frame)
+  },
+  {
+    id: 'x_content_type_options_missing',
+    title: 'X-Content-Type-Options: nosniff missing',
+    category: 'policy_headers',
+    severity: 'MED',
+    description: 'Browsers may MIME-sniff responses when this header is absent, increasing XSS and content-type confusion risk.',
+    recommendation: 'Set X-Content-Type-Options to nosniff.',
+    condition: (f) => !isOn(f.has_x_content_type)
+  },
+  {
     id: 'permissions_policy_missing',
     title: 'Permissions-Policy missing',
     category: 'policy_headers',

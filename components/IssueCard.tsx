@@ -27,9 +27,7 @@ export function IssueCard({ title, severity, category, evidence, fix }: IssueCar
         </span>
       </header>
       <p className="text-xs text-muted">{evidence}</p>
-      <p className="text-xs text-text/90">
-        <span className="text-muted">Recommended:</span> {fix}
-      </p>
+      <p className="text-xs text-text/90">{fix}</p>
     </article>
   )
 }

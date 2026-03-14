@@ -4,12 +4,13 @@ type Props = {
   target: string
   normalizedHost?: string | null
   timestamp: string
-  status: 'success' | 'failed'
+  status: 'success' | 'failed' | 'loading'
 }
 
 const badgeStyles: Record<Props['status'], string> = {
   success: 'border-teal-300/50 bg-teal-300/10 text-teal-200',
-  failed: 'border-red-400/60 bg-red-500/10 text-red-300'
+  failed: 'border-red-400/60 bg-red-500/10 text-red-300',
+  loading: 'border-white/30 bg-white/10 text-muted'
 }
 
 export function ReportHeader({ target, normalizedHost, timestamp, status }: Props) {
@@ -27,7 +28,7 @@ export function ReportHeader({ target, normalizedHost, timestamp, status }: Prop
         <span
           className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${badgeStyles[status]}`}
         >
-          {status}
+          {status === 'loading' ? 'Scanning…' : status}
         </span>
       </div>
     </header>

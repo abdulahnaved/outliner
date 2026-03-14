@@ -5,3 +5,5 @@ pydantic
 numpy
 scikit-learn
 matplotlib
+pytest
+pytest-asyncio

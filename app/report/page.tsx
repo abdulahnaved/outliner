@@ -1,16 +1,23 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ReportHeader } from '../../components/report/ReportHeader'
-import { OverallScoreCard } from '../../components/report/OverallScoreCard'
+import { ScorePanel } from '../../components/report/ScorePanel'
 import { ScoreContext } from '../../components/report/ScoreContext'
 import { IssueList } from '../../components/report/IssueList'
 import { EvidenceSnapshot } from '../../components/report/EvidenceSnapshot'
 import { FailedScanNotice } from '../../components/report/FailedScanNotice'
 import { buildCategorySummaries, evaluateRules } from '../../lib/rules'
+import type { Issue, RuleCategory } from '../../lib/rules'
 import { ModelInsight } from '../../components/report/ModelInsight'
-import { MLEstimate } from '../../components/report/MLEstimate'
 import { SecurityProfile } from '../../components/report/SecurityProfile'
+import { ViewToggle } from '../../components/report/ViewToggle'
+import type { ViewMode } from '../../components/report/ViewToggle'
+import { ScoreModeToggle } from '../../components/report/ScoreModeToggle'
+import type { ScoreMode } from '../../components/report/ScoreModeToggle'
+import { TopDrivers } from '../../components/report/TopDrivers'
+import { Collapsible } from '../../components/report/Collapsible'
+import { BeginnerSummary } from '../../components/report/BeginnerSummary'
 
 type ScanStatus = 'success' | 'failed'
 
@@ -25,7 +32,6 @@ type ScanResult = {
   response_time?: number
   features: Record<string, unknown>
   evidence?: Record<string, unknown> | null
-  /** Primary display score (v2); backend sets rule_score = rule_score_v2 */
   rule_score?: number | null
   rule_grade?: string | null
   rule_label?: number | null
@@ -52,13 +58,29 @@ type ScanResult = {
   } | null
 }
 
+const ISSUE_TO_EVIDENCE: Record<string, string> = {
+  missing_https: 'tls',
+  missing_hsts: 'headers',
+  weak_tls: 'tls',
+  cert_expired: 'tls',
+  cert_expiring: 'tls',
+  missing_csp: 'headers',
+  csp_unsafe_inline: 'headers',
+  csp_unsafe_eval: 'headers',
+  csp_low_score: 'headers',
+  cookie_no_secure: 'headers',
+  cookie_no_httponly: 'headers',
+  cookie_no_samesite: 'headers',
+  referrer_policy_missing: 'headers',
+  permissions_policy_missing: 'headers',
+  x_frame_missing: 'headers',
+  x_content_type_missing: 'headers',
+  cors_wildcard_with_credentials: 'headers'
+}
+
 function formatTimestamp() {
   return new Date().toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+    year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit'
   })
 }
 
@@ -67,12 +89,14 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<ScanResult | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>('beginner')
+  const [scoreMode, setScoreMode] = useState<ScoreMode>('rule')
+  const [activeIssueId, setActiveIssueId] = useState<string | null>(null)
+  const [evidenceHighlight, setEvidenceHighlight] = useState<string | null>(null)
 
   useEffect(() => {
     if (!target) return
-
     setError(null)
-
     const fromCache = () => {
       try {
         const raw = window.localStorage.getItem('outliner:lastScan')
@@ -80,18 +104,10 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
         const parsed = JSON.parse(raw) as ScanResult
         if (parsed && parsed.input_target === target) return parsed
         return null
-      } catch {
-        return null
-      }
+      } catch { return null }
     }
-
     const cached = typeof window !== 'undefined' ? fromCache() : null
-    if (cached) {
-      setData(cached)
-      setLoading(false)
-    } else {
-      setLoading(true)
-    }
+    if (cached) { setData(cached); setLoading(false) } else { setLoading(true) }
 
     fetch('http://localhost:8000/api/scan', {
       method: 'POST',
@@ -106,35 +122,38 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
         }
         if (!json) throw new Error('Empty scan response.')
         setData(json)
-        try {
-          window.localStorage.setItem('outliner:lastScan', JSON.stringify(json))
-        } catch {
-          // ignore
-        }
+        try { window.localStorage.setItem('outliner:lastScan', JSON.stringify(json)) } catch {}
       })
-      .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : 'Could not reach scanner backend.')
-      })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Could not reach scanner backend.'))
       .finally(() => setLoading(false))
   }, [target])
 
   const timestamp = useMemo(() => formatTimestamp(), [])
-
   const issues = useMemo(() => (data ? evaluateRules(data.features ?? {}) : []), [data])
   const categories = useMemo(() => {
     if (!data) return []
-    const summaries = buildCategorySummaries(issues, data.features ?? {})
-    return summaries.map((s) => ({
-      title: s.title,
-      strength: s.strength,
-      bullets:
-        s.category === 'cookies' && s.strength === 'Neutral'
-          ? ['No cookies detected.']
-          : s.triggered.length === 0
-            ? ['No triggered issues in this category.']
-            : s.triggered.slice(0, 4).map((i) => i.title)
+    return buildCategorySummaries(issues, data.features ?? {}).map((s) => ({
+      title: s.title, strength: s.strength, category: s.category, triggered: s.triggered
     }))
   }, [data, issues])
+
+  const handleIssueClick = useCallback((issue: Issue) => {
+    const next = activeIssueId === issue.id ? null : issue.id
+    setActiveIssueId(next)
+    const evSection = next ? (ISSUE_TO_EVIDENCE[issue.id] ?? 'headers') : null
+    setEvidenceHighlight(evSection)
+    if (evSection) {
+      setTimeout(() => {
+        document.getElementById(`evidence-${evSection}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
+    }
+  }, [activeIssueId])
+
+  const handleCategoryJump = useCallback((_cat: RuleCategory) => {
+    document.getElementById('section-security-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  // --- Early returns for error/loading/missing ---
 
   if (!target) {
     return (
@@ -158,83 +177,145 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
     return (
       <div className="space-y-4">
         <ReportHeader target={target} normalizedHost={null} timestamp={timestamp} status="loading" />
-        <p className="text-xs text-muted">{loading ? 'Scanning…' : 'Loading report…'}</p>
+        <p className="text-xs text-muted">{loading ? 'Scanning\u2026' : 'Loading report\u2026'}</p>
       </div>
     )
   }
 
-  const status = data.scan_status
-
-  // FAILED state: minimal surface only
-  if (status === 'failed') {
+  if (data.scan_status === 'failed') {
     return (
       <div className="space-y-10">
-        <ReportHeader
-          target={data.input_target || target}
-          normalizedHost={data.normalized_host}
-          timestamp={timestamp}
-          status="failed"
-        />
+        <ReportHeader target={data.input_target || target} normalizedHost={data.normalized_host} timestamp={timestamp} status="failed" />
         <FailedScanNotice scanErrorType={data.scan_error_type} scanErrorMessage={data.scan_error_message} />
         <section className="space-y-3 rounded border border-white/15 bg-black/20 p-4">
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted">available metadata</p>
           <div className="text-xs text-muted">
             <p className="break-words">requested url: {data.requested_url}</p>
-            <p className="break-words">final url: {data.final_url ?? '—'}</p>
-            <p>status code: {data.final_status_code ?? '—'}</p>
+            <p className="break-words">final url: {data.final_url ?? '\u2014'}</p>
+            <p>status code: {data.final_status_code ?? '\u2014'}</p>
           </div>
         </section>
       </div>
     )
   }
 
-  // SUCCESS state: full structure
+  // --- SUCCESS ---
+
   const ruleScore = data.rule_score ?? 0
-  const ruleGrade = data.rule_grade ?? '—'
+  const ruleGrade = data.rule_grade ?? '\u2014'
 
   return (
-    <div className="space-y-10">
-      <ReportHeader
-        target={data.input_target || target}
-        normalizedHost={data.normalized_host}
-        timestamp={timestamp}
-        status="success"
-      />
+    <div className="space-y-8">
+      {/* Header + view toggle (shared) */}
+      <div className="space-y-4">
+        <ReportHeader
+          target={data.input_target || target}
+          normalizedHost={data.normalized_host}
+          timestamp={timestamp}
+          status="success"
+        />
+        <ViewToggle mode={viewMode} onChange={setViewMode} />
+      </div>
 
-      <OverallScoreCard ruleScore={ruleScore} ruleGrade={ruleGrade} />
+      {/* ====== BEGINNER VIEW ====== */}
+      {viewMode === 'beginner' && (
+        <BeginnerSummary
+          ruleScore={ruleScore}
+          ruleGrade={ruleGrade}
+          mlAvailable={Boolean(data.prediction_available)}
+          mlScore={data.predicted_rule_score}
+          percentile={data.score_context?.percentile ?? null}
+          categories={categories}
+          issues={issues}
+          features={data.features ?? {}}
+        />
+      )}
 
-      <ScoreContext
-        currentScore={ruleScore}
-        distributionScores={data.score_context?.distribution_scores ?? []}
-        datasetMedian={data.score_context?.dataset_median ?? null}
-        datasetAverage={data.score_context?.dataset_average ?? null}
-        percentile={data.score_context?.percentile ?? null}
-      />
+      {/* ====== TECHNICAL VIEW ====== */}
+      {viewMode === 'technical' && (
+        <div className="space-y-8">
+          {/* Score mode toggle + score panel */}
+          <div className="space-y-4">
+            <ScoreModeToggle mode={scoreMode} onChange={setScoreMode} />
+            <ScorePanel
+              ruleScore={ruleScore}
+              ruleGrade={ruleGrade}
+              mlAvailable={Boolean(data.prediction_available)}
+              mlScore={data.predicted_rule_score}
+              scoreMode={scoreMode}
+              viewMode={viewMode}
+            />
+          </div>
 
-      <MLEstimate
-        predictionAvailable={Boolean(data.prediction_available)}
-        predictedRuleScore={data.predicted_rule_score}
-      />
+          {/* Score context */}
+          <Collapsible title="score context" subtitle="Dataset distribution & percentile">
+            <ScoreContext
+              currentScore={ruleScore}
+              distributionScores={data.score_context?.distribution_scores ?? []}
+              datasetMedian={data.score_context?.dataset_median ?? null}
+              datasetAverage={data.score_context?.dataset_average ?? null}
+              percentile={data.score_context?.percentile ?? null}
+            />
+          </Collapsible>
 
-      <ModelInsight
-        percentile={data.score_context?.percentile ?? null}
-        predictionAvailable={Boolean(data.prediction_available)}
-        features={data.features ?? undefined}
-      />
+          {/* Top drivers */}
+          <TopDrivers
+            features={data.features ?? {}}
+            issues={issues}
+            viewMode={viewMode}
+            onCategoryClick={handleCategoryJump}
+          />
 
-      <SecurityProfile categories={categories.map((c) => ({ title: c.title, strength: c.strength }))} />
+          {/* Model insight */}
+          <Collapsible title="model insight" subtitle="Feature importances & prediction confidence">
+            <ModelInsight
+              percentile={data.score_context?.percentile ?? null}
+              predictionAvailable={Boolean(data.prediction_available)}
+              features={data.features ?? undefined}
+            />
+          </Collapsible>
 
-      <IssueList issues={issues} />
+          {/* Security profile */}
+          <Collapsible
+            title="security profile"
+            subtitle="Category-level strength assessment"
+            id="section-security-profile"
+          >
+            <SecurityProfile
+              categories={categories.map((c) => ({ title: c.title, strength: c.strength }))}
+              issues={issues}
+              viewMode={viewMode}
+            />
+          </Collapsible>
 
-      <EvidenceSnapshot
-        evidence={data.evidence}
-        features={data.features}
-        finalStatusCode={data.final_status_code}
-        finalUrl={data.final_url}
-        redirectCount={data.redirect_count ?? 0}
-        responseTime={data.response_time ?? null}
-      />
+          {/* Recommendations (filterable, linked to evidence) */}
+          <Collapsible
+            title="recommendations"
+            subtitle={`${issues.length} issue${issues.length === 1 ? '' : 's'} found`}
+          >
+            <IssueList
+              issues={issues}
+              viewMode={viewMode}
+              onIssueClick={handleIssueClick}
+              activeIssueId={activeIssueId}
+            />
+          </Collapsible>
+
+          {/* Evidence snapshot */}
+          <Collapsible title="evidence snapshot" subtitle="Response metadata & header evidence">
+            <EvidenceSnapshot
+              evidence={data.evidence}
+              features={data.features}
+              finalStatusCode={data.final_status_code}
+              finalUrl={data.final_url}
+              redirectCount={data.redirect_count ?? 0}
+              responseTime={data.response_time ?? null}
+              viewMode={viewMode}
+              highlightSection={evidenceHighlight}
+            />
+          </Collapsible>
+        </div>
+      )}
     </div>
   )
 }
-

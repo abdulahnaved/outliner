@@ -18,6 +18,9 @@ import type { ScoreMode } from '../../components/report/ScoreModeToggle'
 import { TopDrivers } from '../../components/report/TopDrivers'
 import { Collapsible } from '../../components/report/Collapsible'
 import { BeginnerSummary } from '../../components/report/BeginnerSummary'
+import { ExecutiveSummaryStrip } from '../../components/report/ExecutiveSummaryStrip'
+import { deriveExecutiveSummary } from '../../lib/reportNarrative'
+import type { MlReliability, ReliabilityTier } from '../../lib/reportNarrative'
 
 type ScanStatus = 'success' | 'failed'
 
@@ -47,6 +50,8 @@ type ScanResult = {
   ml_model_name?: string | null
   ml_model_variant?: string | null
   prediction_error?: string | null
+  prediction_reliability?: 'higher' | 'moderate' | 'lower' | null
+  prediction_reliability_reason?: string | null
   scan_status: ScanStatus
   scan_error_type?: string | null
   scan_error_message?: string | null
@@ -90,7 +95,7 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<ScanResult | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('beginner')
-  const [scoreMode, setScoreMode] = useState<ScoreMode>('rule')
+  const [scoreMode, setScoreMode] = useState<ScoreMode>('ml')
   const [activeIssueId, setActiveIssueId] = useState<string | null>(null)
   const [evidenceHighlight, setEvidenceHighlight] = useState<string | null>(null)
 
@@ -152,6 +157,37 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
   const handleCategoryJump = useCallback((_cat: RuleCategory) => {
     document.getElementById('section-security-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [])
+
+  const executiveSummary = useMemo(
+    () => deriveExecutiveSummary(categories, issues),
+    [categories, issues]
+  )
+  const mlReliability = useMemo<MlReliability>(() => {
+    const avail = Boolean(data?.prediction_available)
+    const rel = data?.prediction_reliability ?? null
+    const reason = data?.prediction_reliability_reason ?? null
+    const hasBackendReliability = avail && Boolean(rel) && Boolean(reason)
+
+    if (!avail) {
+      return {
+        tier: 'lower',
+        label: 'Estimate unavailable',
+        explanation: 'No learned score was produced for this scan. Use the deterministic baseline and raw evidence.'
+      }
+    }
+
+    if (!hasBackendReliability) {
+      return {
+        tier: 'moderate',
+        label: 'Reliability unavailable',
+        explanation: 'The backend did not provide a distance-to-training reliability label for this prediction.'
+      }
+    }
+
+    const tier: ReliabilityTier = rel === 'higher' ? 'higher' : rel === 'moderate' ? 'moderate' : 'lower'
+    const label = tier === 'higher' ? 'Higher reliability' : tier === 'moderate' ? 'Moderate reliability' : 'Lower reliability'
+    return { tier, label, explanation: reason as string }
+  }, [data?.prediction_available, data?.prediction_reliability, data?.prediction_reliability_reason])
 
   // --- Early returns for error/loading/missing ---
 
@@ -234,9 +270,11 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
       {/* ====== TECHNICAL VIEW ====== */}
       {viewMode === 'technical' && (
         <div className="space-y-8">
-          {/* Score mode toggle + score panel */}
-          <div className="space-y-4">
-            <ScoreModeToggle mode={scoreMode} onChange={setScoreMode} />
+          <div className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Assessment mode</p>
+              <ScoreModeToggle mode={scoreMode} onChange={setScoreMode} />
+            </div>
             <ScorePanel
               ruleScore={ruleScore}
               ruleGrade={ruleGrade}
@@ -244,11 +282,17 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
               mlScore={data.predicted_rule_score}
               scoreMode={scoreMode}
               viewMode={viewMode}
+              mlReliability={mlReliability}
+              predictionError={data.prediction_error}
             />
           </div>
 
-          {/* Score context */}
-          <Collapsible title="score context" subtitle="Dataset distribution & percentile">
+          <ExecutiveSummaryStrip summary={executiveSummary} />
+
+          <Collapsible
+            title="Dataset context"
+            subtitle="Historical rule scores—percentile aligns with the deterministic baseline"
+          >
             <ScoreContext
               currentScore={ruleScore}
               distributionScores={data.score_context?.distribution_scores ?? []}
@@ -258,27 +302,24 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
             />
           </Collapsible>
 
-          {/* Top drivers */}
           <TopDrivers
             features={data.features ?? {}}
             issues={issues}
             viewMode={viewMode}
+            scoreMode={scoreMode}
             onCategoryClick={handleCategoryJump}
           />
 
-          {/* Model insight */}
-          <Collapsible title="model insight" subtitle="Feature importances & prediction confidence">
+          <Collapsible title="Model structure" subtitle="Global importances (training)—not per-site explanations">
             <ModelInsight
-              percentile={data.score_context?.percentile ?? null}
               predictionAvailable={Boolean(data.prediction_available)}
               features={data.features ?? undefined}
             />
           </Collapsible>
 
-          {/* Security profile */}
           <Collapsible
-            title="security profile"
-            subtitle="Category-level strength assessment"
+            title="Category map"
+            subtitle="Interactive posture view by security area"
             id="section-security-profile"
           >
             <SecurityProfile
@@ -288,10 +329,9 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
             />
           </Collapsible>
 
-          {/* Recommendations (filterable, linked to evidence) */}
           <Collapsible
-            title="recommendations"
-            subtitle={`${issues.length} issue${issues.length === 1 ? '' : 's'} found`}
+            title="Recommendations"
+            subtitle={`${issues.length} finding${issues.length === 1 ? '' : 's'} — filter and link to evidence`}
           >
             <IssueList
               issues={issues}
@@ -301,8 +341,7 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
             />
           </Collapsible>
 
-          {/* Evidence snapshot */}
-          <Collapsible title="evidence snapshot" subtitle="Response metadata & header evidence">
+          <Collapsible title="Raw evidence" subtitle="Headers, TLS metadata, and extracted features">
             <EvidenceSnapshot
               evidence={data.evidence}
               features={data.features}

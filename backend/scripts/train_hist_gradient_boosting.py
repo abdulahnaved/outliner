@@ -3,6 +3,10 @@
 Train HistGradientBoostingRegressor (max_depth=5) on the full regression dataset,
 evaluate on test, save metrics, predictions, permutation importance, plots,
 and compare with the baseline GradientBoostingRegressor.
+
+Also exports additive reliability artifacts based on distance-to-training examples
+(StandardScaler + NearestNeighbors + distance quantiles). These are used at runtime
+to label predictions as higher/moderate/lower reliability with careful wording.
 """
 from __future__ import annotations
 
@@ -73,6 +77,8 @@ def main() -> int:
     from sklearn.ensemble import HistGradientBoostingRegressor
     from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
     from sklearn.inspection import permutation_importance
+    from sklearn.neighbors import NearestNeighbors
+    from sklearn.preprocessing import StandardScaler
 
     for p in (TRAIN_PATH, VAL_PATH, TEST_PATH):
         if not p.exists():
@@ -110,6 +116,21 @@ def main() -> int:
     )
     model.fit(X_train, y_train)
 
+    # Reliability artifacts: distance-to-training-data in standardized feature space.
+    # This is not "confidence"—it is a conservative signal about how typical the feature vector is
+    # relative to the training set.
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    k_neighbors = 25
+    nn = NearestNeighbors(n_neighbors=k_neighbors, metric="euclidean")
+    nn.fit(X_train_scaled)
+    # Use mean distance to k nearest neighbors as the distance statistic.
+    # For training points, the nearest neighbor list includes itself at distance 0; drop it.
+    dists_train, _ = nn.kneighbors(X_train_scaled, n_neighbors=k_neighbors, return_distance=True)
+    mean_dist_train = np.mean(dists_train[:, 1:], axis=1) if dists_train.shape[1] > 1 else np.mean(dists_train, axis=1)
+    q50 = float(np.quantile(mean_dist_train, 0.50))
+    q80 = float(np.quantile(mean_dist_train, 0.80))
+
     # Save runtime artifacts for backend inference
     ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
     import joblib
@@ -131,6 +152,24 @@ def main() -> int:
     with open(ARTIFACTS_DIR / f"{MODEL_STEM}_preprocessing.json", "w") as f:
         json.dump(preprocessing, f, indent=2)
     print(f"Wrote artifacts to {ARTIFACTS_DIR}", file=sys.stderr)
+
+    # Save additive reliability artifacts (safe to omit in deployment)
+    reliability_artifact = {"scaler": scaler, "nn": nn}
+    reliability_stem = f"{MODEL_STEM}_reliability"
+    joblib.dump(reliability_artifact, ARTIFACTS_DIR / f"{reliability_stem}.joblib")
+    with open(ARTIFACTS_DIR / f"{reliability_stem}.json", "w") as f:
+        json.dump(
+            {
+                "k_neighbors": k_neighbors,
+                "mean_distance_q50": q50,
+                "mean_distance_q80": q80,
+                "train_samples": int(X_train.shape[0]),
+                "n_features": int(X_train.shape[1]),
+            },
+            f,
+            indent=2,
+        )
+    print(f"Wrote reliability artifacts: {reliability_stem}.*", file=sys.stderr)
 
     y_pred = model.predict(X_test)
     mae = float(mean_absolute_error(y_test, y_pred))

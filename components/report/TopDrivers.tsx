@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { Issue, RuleCategory } from '../../lib/rules'
+import type { ScoreMode } from './ScoreModeToggle'
 import type { ViewMode } from './ViewToggle'
 
 type Driver = {
@@ -42,7 +43,7 @@ function deriveDrivers(features: Record<string, unknown>, issues: Issue[]): Driv
     drivers.push({
       id: 'hsts_missing', label: 'HSTS missing', shortLabel: 'No HSTS', sentiment: 'negative',
       category: 'transport_security',
-      beginner: 'The server doesn\u2019t tell browsers to always use HTTPS.',
+      beginner: 'The server doesn’t tell browsers to always use HTTPS.',
       technical: 'Strict-Transport-Security header absent; transport penalty.'
     })
   } else if (num(features.has_hsts) === 1) {
@@ -93,7 +94,7 @@ function deriveDrivers(features: Record<string, unknown>, issues: Issue[]): Driv
     drivers.push({
       id: 'pp_missing', label: 'Permissions-Policy missing', shortLabel: 'No Permissions-Policy', sentiment: 'negative',
       category: 'policy_headers',
-      beginner: 'The site hasn\u2019t restricted which browser features (camera, microphone, etc.) it can use.',
+      beginner: 'The site hasn’t restricted which browser features (camera, microphone, etc.) it can use.',
       technical: 'has_permissions_policy=0; policy header penalty.'
     })
   }
@@ -114,7 +115,7 @@ function deriveDrivers(features: Record<string, unknown>, issues: Issue[]): Driv
     drivers.push({
       id: 'cors_bad', label: 'CORS wildcard + credentials', shortLabel: 'CORS risk', sentiment: 'negative',
       category: 'cross_origin',
-      beginner: 'The site allows any website to read its data with user credentials \u2014 a serious misconfiguration.',
+      beginner: 'The site allows any website to read its data with user credentials — a serious misconfiguration.',
       technical: 'cors_wildcard_with_credentials=1; cross-origin penalty.'
     })
   }
@@ -128,28 +129,39 @@ const sentimentStyles = {
   neutral: 'border-yellow-500/40 bg-yellow-500/10 text-yellow-200 hover:border-yellow-400/60'
 }
 
+function sectionTitle(scoreMode: ScoreMode): string {
+  if (scoreMode === 'rule') return 'Rule-based drivers'
+  if (scoreMode === 'ml') return 'Learned-signal drivers'
+  return 'Cross-lens drivers'
+}
+
+function sectionBlurb(scoreMode: ScoreMode): string {
+  if (scoreMode === 'rule') {
+    return 'Heuristic posture signals that feed the capped rule engine (distinct from global ML importances).'
+  }
+  if (scoreMode === 'ml') {
+    return 'Passive features that typically move the learned estimate—pair with “Model structure” below.'
+  }
+  return 'Where deterministic flags and model-sensitive features overlap—read against the compare panel.'
+}
+
 type Props = {
   features: Record<string, unknown>
   issues: Issue[]
   viewMode: ViewMode
+  scoreMode: ScoreMode
   onCategoryClick?: (cat: RuleCategory) => void
 }
 
-export function TopDrivers({ features, issues, viewMode, onCategoryClick }: Props) {
+export function TopDrivers({ features, issues, viewMode, scoreMode, onCategoryClick }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const drivers = deriveDrivers(features, issues)
   if (drivers.length === 0) return null
 
   return (
     <section className="space-y-3 rounded border border-white/15 bg-black/20 p-4">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-        {viewMode === 'beginner' ? 'why this score?' : 'top drivers'}
-      </p>
-      <p className="text-[11px] text-muted">
-        {viewMode === 'beginner'
-          ? 'The main things that helped or hurt this site\u2019s security score.'
-          : 'Key feature signals contributing to the rule-based assessment.'}
-      </p>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-muted">{sectionTitle(scoreMode)}</p>
+      <p className="text-[11px] text-muted">{sectionBlurb(scoreMode)}</p>
       <div className="flex flex-wrap gap-2">
         {drivers.map((d) => (
           <button
@@ -158,7 +170,7 @@ export function TopDrivers({ features, issues, viewMode, onCategoryClick }: Prop
             onClick={() => setExpanded(expanded === d.id ? null : d.id)}
             className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${sentimentStyles[d.sentiment]} ${expanded === d.id ? 'ring-1 ring-white/20' : ''}`}
           >
-            {d.sentiment === 'positive' ? '\u2713 ' : d.sentiment === 'negative' ? '\u2717 ' : '\u25CB '}
+            {d.sentiment === 'positive' ? '✓ ' : d.sentiment === 'negative' ? '✗ ' : '○ '}
             {d.shortLabel}
           </button>
         ))}
@@ -175,7 +187,7 @@ export function TopDrivers({ features, issues, viewMode, onCategoryClick }: Prop
               className="mt-2 text-[10px] text-teal-400/80 underline underline-offset-2 hover:text-teal-300"
               onClick={() => onCategoryClick?.(d.category)}
             >
-              Jump to {d.category.replaceAll('_', ' ')} \u2192
+              Jump to {d.category.replaceAll('_', ' ')} →
             </button>
           </div>
         )

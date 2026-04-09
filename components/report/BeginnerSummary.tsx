@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import type { Issue, RuleCategory } from '../../lib/rules'
+import { deriveExecutiveSummary } from '../../lib/reportNarrative'
+import { ExecutiveSummaryStrip } from './ExecutiveSummaryStrip'
 
 type Strength = 'Strong' | 'Moderate' | 'Weak' | 'Neutral'
 type CategoryInfo = { title: string; strength: Strength; category: RuleCategory; triggered: Issue[] }
@@ -70,40 +72,74 @@ export function BeginnerSummary({
   const medIssues = issues.filter((i) => i.severity === 'MED')
   const topIssues = showAllIssues ? issues : issues.slice(0, 4)
 
-  const verdictText = ruleScore >= 85
-    ? 'This site has strong security practices.'
-    : ruleScore >= 60
-      ? 'This site has decent security but some gaps need attention.'
-      : ruleScore >= 40
-        ? 'This site has notable security weaknesses that should be addressed.'
-        : 'This site has serious security gaps. Significant improvements are needed.'
+  const exec = deriveExecutiveSummary(categories, issues)
+  const mlRound = typeof mlScore === 'number' ? Math.round(mlScore) : null
+  const primaryIsMl = mlAvailable && mlRound != null
+
+  const verdictText = (primaryIsMl ? mlRound! : ruleScore) >= 85
+    ? 'Overall posture looks strong from passive signals.'
+    : (primaryIsMl ? mlRound! : ruleScore) >= 60
+      ? 'Solid in places; several improvements would tighten the posture.'
+      : (primaryIsMl ? mlRound! : ruleScore) >= 40
+        ? 'Notable gaps—prioritize transport and content policies.'
+        : 'Serious exposure risk from passive signals alone—plan substantive fixes.'
 
   return (
     <div className="space-y-8">
-      {/* Big verdict card */}
-      <section className="rounded-lg border border-white/15 bg-gradient-to-br from-black/40 via-black/20 to-black/40 p-6 text-center">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-muted">security assessment</p>
-        <div className="mt-4 flex items-center justify-center gap-4">
-          <span className="text-6xl font-bold tabular-nums text-text">{Math.round(ruleScore)}</span>
+      {/* Hero: ML-first when available */}
+      <section
+        className={`rounded-lg border p-6 text-center ${
+          primaryIsMl ? 'border-red-500/20 bg-gradient-to-br from-red-950/25 via-black/25 to-black/40' : 'border-white/15 bg-gradient-to-br from-black/40 via-black/20 to-black/40'
+        }`}
+      >
+        <p className="text-[10px] uppercase tracking-[0.3em] text-muted">
+          {primaryIsMl ? 'Learned assessment (primary)' : 'Rule baseline'}
+        </p>
+        <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-6">
+          <span className={`text-6xl font-bold tabular-nums ${primaryIsMl ? 'text-red-300' : 'text-text'}`}>
+            {primaryIsMl ? mlRound : Math.round(ruleScore)}
+          </span>
           <div className="text-left">
-            <span className={`text-3xl font-bold ${gradeColor(ruleGrade)}`}>
-              {gradeEmoji(ruleGrade)} {ruleGrade}
-            </span>
-            <p className="text-xs text-muted">out of 110</p>
+            {primaryIsMl ? (
+              <>
+                <p className="text-sm font-medium text-text/90">ML estimate (0–110)</p>
+                <p className="mt-1 text-xs text-muted">
+                  Rule grade (baseline):{' '}
+                  <span className={`font-semibold ${gradeColor(ruleGrade)}`}>
+                    {gradeEmoji(ruleGrade)} {ruleGrade}
+                  </span>
+                </p>
+              </>
+            ) : (
+              <>
+                <span className={`text-3xl font-bold ${gradeColor(ruleGrade)}`}>
+                  {gradeEmoji(ruleGrade)} {ruleGrade}
+                </span>
+                <p className="text-xs text-muted">out of 110 (rule score)</p>
+              </>
+            )}
           </div>
         </div>
-        <p className="mx-auto mt-4 max-w-md text-sm text-text/80">{verdictText}</p>
-        {percentile != null && (
-          <p className="mt-2 text-xs text-muted">
-            This site scores better than <span className="text-text">{Math.round(percentile)}%</span> of sites in our dataset.
+        <p className="mx-auto mt-3 max-w-md text-sm text-text/80">{verdictText}</p>
+        {primaryIsMl && (
+          <p className="mx-auto mt-2 max-w-md text-xs text-muted">
+            Learned from passive features across prior scans.{' '}
+            <span className="text-text/80">Rule baseline: {Math.round(ruleScore)}</span>
           </p>
         )}
-        {mlAvailable && typeof mlScore === 'number' && (
-          <p className="mt-1 text-xs text-muted">
-            Our AI model independently estimates a score of <span className="text-red-300 font-medium">{Math.round(mlScore)}</span>.
+        {!primaryIsMl && percentile != null && (
+          <p className="mt-2 text-xs text-muted">
+            Better than <span className="text-text">{Math.round(percentile)}%</span> of sites (rule-score distribution).
+          </p>
+        )}
+        {primaryIsMl && percentile != null && (
+          <p className="mt-2 text-xs text-muted">
+            Dataset position (rule-scale): <span className="text-text">{Math.round(percentile)}%</span> percentile
           </p>
         )}
       </section>
+
+      <ExecutiveSummaryStrip summary={exec} />
 
       {/* Quick status: high issues count */}
       {(highIssues.length > 0 || medIssues.length > 0) && (
@@ -198,7 +234,7 @@ export function BeginnerSummary({
               onClick={() => setShowAllIssues(true)}
               className="text-xs text-teal-400/80 hover:text-teal-300"
             >
-              Show all {issues.length} issues \u2192
+              Show all {issues.length} issues →
             </button>
           )}
         </section>

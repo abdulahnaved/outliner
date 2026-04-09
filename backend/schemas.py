@@ -159,6 +159,9 @@ class ScanResult(BaseModel):
   ml_model_name: Optional[str] = None
   ml_model_variant: Optional[str] = None
   prediction_error: Optional[str] = None
+  # ML reliability (additive; careful wording; derived from distance-to-training when available)
+  prediction_reliability: Optional[Literal["higher", "moderate", "lower"]] = None
+  prediction_reliability_reason: Optional[str] = None
   # Scan status and error info (for failed/unreachable targets)
   scan_status: ScanStatus = "success"
   scan_error_type: Optional[str] = None  # timeout, dns_error, tls_error, connection_error, http_error, blocked, unknown

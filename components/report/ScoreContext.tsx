@@ -55,7 +55,7 @@ export function ScoreContext({
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted">
-        Where this site sits among previously scanned sites (gray dots). Your site is the red dot.
+        Historical rule-score distribution (gray). Red marker: this site’s rule baseline—percentiles are computed on that same scale.
       </p>
 
       <div className="grid gap-3 text-xs text-muted sm:grid-cols-4">

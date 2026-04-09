@@ -82,6 +82,8 @@ def _make_failed_result(
         ml_model_name="HistGradientBoostingRegressor",
         ml_model_variant="full_dataset_depth5",
         prediction_error="Scan failed; no prediction",
+        prediction_reliability=None,
+        prediction_reliability_reason=None,
         scan_status="failed",
         scan_error_type=error_type,
         scan_error_message=error_message,

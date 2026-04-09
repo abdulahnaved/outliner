@@ -22,19 +22,8 @@ const ALL_FEATURES: { key: string; label: string; value: number }[] = [
 const BAR_POWER = 0.45
 
 type Props = {
-  /** Percentile of current score in dataset (0–100). Used for confidence. */
-  percentile?: number | null
   predictionAvailable?: boolean
-  /** Optional scan features: when present, we pick/order features by relevance to this site. */
   features?: Record<string, unknown>
-}
-
-function confidenceFromPercentile(pct: number | null | undefined): 'High' | 'Medium' | 'Low' | null {
-  if (pct == null || Number.isNaN(pct)) return null
-  if (pct >= 25 && pct <= 75) return 'High'
-  if (pct >= 10 && pct < 25) return 'Medium'
-  if (pct > 75 && pct <= 90) return 'Medium'
-  return 'Low'
 }
 
 function num(v: unknown): number {
@@ -75,22 +64,17 @@ function pickFeaturesForDisplay(
 }
 
 export function ModelInsight({
-  percentile,
   predictionAvailable,
   features
 }: Props) {
-  const confidence = confidenceFromPercentile(percentile ?? undefined)
   const displayFeatures = pickFeaturesForDisplay(features, 6)
   const maxVal = Math.max(...displayFeatures.map((f) => f.value))
 
   return (
-    <section className="space-y-5 rounded border border-white/15 bg-black/20 p-4">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-muted">model insight</p>
-
-      {/* Feature contribution – horizontal bar chart (soft scale so no single bar dominates) */}
+    <div className="space-y-5">
       <div className="space-y-2">
         <p className="text-xs text-muted">
-          What drives the ML estimate (ordered by relevance to this site)
+          Global importance weights (training), ordered by relevance to this scan’s features
         </p>
         <div className="space-y-2.5">
           {displayFeatures.map(({ label, value, sharePct }) => {
@@ -114,42 +98,13 @@ export function ModelInsight({
           })}
         </div>
         <p className="text-[10px] text-muted/80">
-          Bar length uses a soft scale; number is each factor’s share of total model importance.
+          Bar length uses a soft scale; percentages are global importances, not per-site SHAP values.
         </p>
       </div>
 
-      {/* Prediction confidence */}
-      {predictionAvailable && (
-        <div className="rounded border border-white/10 bg-black/15 px-3 py-2.5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted">
-            Prediction confidence
-          </p>
-          <p className="mt-1 text-sm font-medium text-text">
-            {confidence == null ? (
-              '—'
-            ) : (
-              <>
-                <span
-                  className={
-                    confidence === 'High'
-                      ? 'text-teal-300'
-                      : confidence === 'Medium'
-                        ? 'text-yellow-200'
-                        : 'text-amber-300'
-                  }
-                >
-                  {confidence}
-                </span>
-              </>
-            )}
-          </p>
-          <p className="mt-0.5 text-[11px] text-muted">
-            {confidence != null
-              ? 'Based on similarity to previously scanned configurations.'
-              : 'Percentile not available for this scan.'}
-          </p>
-        </div>
+      {!predictionAvailable && (
+        <p className="text-[11px] text-muted">No ML prediction for this scan—weights shown for architecture context only.</p>
       )}
-    </section>
+    </div>
   )
 }

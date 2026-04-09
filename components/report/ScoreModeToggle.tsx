@@ -7,10 +7,10 @@ type Props = {
   onChange: (mode: ScoreMode) => void
 }
 
-const OPTS: { value: ScoreMode; label: string }[] = [
-  { value: 'rule', label: 'Rule' },
-  { value: 'ml', label: 'ML' },
-  { value: 'compare', label: 'Compare' }
+const OPTS: { value: ScoreMode; label: string; title: string }[] = [
+  { value: 'ml', label: 'ML', title: 'Learned estimate (primary)' },
+  { value: 'rule', label: 'Rule', title: 'Deterministic baseline' },
+  { value: 'compare', label: 'Compare', title: 'Rule vs ML analysis' }
 ]
 
 export function ScoreModeToggle({ mode, onChange }: Props) {
@@ -20,6 +20,7 @@ export function ScoreModeToggle({ mode, onChange }: Props) {
         <button
           key={o.value}
           type="button"
+          title={o.title}
           onClick={() => onChange(o.value)}
           className={`rounded px-3 py-1.5 transition-colors ${mode === o.value ? 'bg-white/10 text-text' : 'text-muted hover:text-text/70'}`}
         >

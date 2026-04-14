@@ -2,7 +2,7 @@
 
 ## Canonical source of truth
 
-- **scans.v3_combined.cleaned.jsonl** — Master cleaned dataset (one row per scanned host: metadata, `features`, `evidence`, `rule_score`, `rule_grade`, `rule_label`, `rule_reasons`). This is the single source for the ML regression pipeline. Do not delete; older dataset versions are in `archive/`.
+- **`processed/scans.v3_combined.cleaned.jsonl`** (local / CI artifact; not committed) — Master cleaned dataset (one row per scanned host: metadata, `features`, `evidence`, `rule_score`, `rule_grade`, `rule_label`, `rule_reasons`). Single source for the ML regression pipeline. Regenerate via pipeline scripts; older dataset versions live in `archive/`.
 
 ## Target lists
 
@@ -41,8 +41,8 @@ So the model sees only raw security posture (e.g. has_https, has_csp, cookie_sec
 ### Canonical files after running the pipeline
 
 ```
-data/
-  scans.v3_combined.cleaned.jsonl   # master input
+data/processed/
+  scans.v3_combined.cleaned.jsonl   # master input (local)
   archive/...
   ml/
     regression_feature_schema.json

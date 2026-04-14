@@ -2,11 +2,31 @@
 
 Outliner scans a website and produces a security report: rule-based score, ML estimate, security profile (radar chart), and recommendations.
 
+## Repository layout
+
+| Path | Purpose |
+|------|---------|
+| **`app/`** | Next.js App Router: pages, layouts, API routes (`app/api/*`). |
+| **`components/`** | React UI (`Navbar`, `DomainInput`, `report/*` for the report page). |
+| **`lib/`** | Shared TS: auth helpers, rules engine (`rules.ts`), report copy (`reportNarrative.ts`). |
+| **`data/`** | Local SQLite (`outliner.db` when running the app) — **gitignored**. |
+| **`backend/`** | FastAPI scanner: `main.py`, `services/` (passive scan, scoring, ML), `tests/`. |
+| **`backend/scripts/`** | One-off Python tools (batch scan, dataset export, training helpers). See `backend/scripts/README.md`. |
+| **`backend/data/`** | Target lists, validation assets, optional local datasets — see `backend/data/README.md`. |
+| **`lab/`** | Docker/nginx test sites for local scanning. |
+
 **Routes:**
 
-- `/` — Landing page; run a scan (domain input hits the backend).
-- `/report?target=...` — Report page (scores, context, ML insight, security profile, recommendations, evidence).
+- `/` — Landing page; **Run scan** goes to `/report?target=…` (single scan on the report page; backend must be running).
+- `/report?target=...` — Live report (scanner at `localhost:8000`).
+- `/report?scanId=...` — Saved report (SQLite, signed-in users).
+- `/login`, `/register` — Email + password auth (cookie session).
+- `/dashboard` — Signed-in workspace (scan, recent saves, compare).
+- `/history` — Full archive of saved scans.
+- `/history/compare` — Compare two saved scans (query `a`, `b`).
 - `/about` — What it is and how it works.
+
+**Auth / persistence (Next.js):** SQLite under `data/outliner.db` (gitignored). Set `OUTLINER_AUTH_SECRET` (16+ chars) in production—see `.env.example`. The Python scanner is unchanged; only the Next app stores history.
 
 ## Local dev
 

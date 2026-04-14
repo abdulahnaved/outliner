@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ReportHeader } from '../../components/report/ReportHeader'
 import { ScorePanel } from '../../components/report/ScorePanel'
 import { ScoreContext } from '../../components/report/ScoreContext'
@@ -89,8 +90,14 @@ function formatTimestamp() {
   })
 }
 
-export default function ReportPage({ searchParams }: { searchParams: { target?: string } }) {
+export default function ReportPage({
+  searchParams
+}: {
+  searchParams: { target?: string; scanId?: string }
+}) {
+  const router = useRouter()
   const target = searchParams.target || ''
+  const scanId = searchParams.scanId || ''
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<ScanResult | null>(null)
@@ -98,21 +105,51 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
   const [scoreMode, setScoreMode] = useState<ScoreMode>('ml')
   const [activeIssueId, setActiveIssueId] = useState<string | null>(null)
   const [evidenceHighlight, setEvidenceHighlight] = useState<string | null>(null)
+  const ranKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
+    const key = scanId ? `scanId:${scanId}` : target ? `target:${target}` : null
+    // React Strict Mode (dev) runs effects twice; avoid double scan+save.
+    if (key && ranKeyRef.current === key) return
+    ranKeyRef.current = key
+
+    if (scanId) {
+      setError(null)
+      setLoading(true)
+      setData(null)
+      fetch(`/api/scans/${encodeURIComponent(scanId)}`, { credentials: 'include' })
+        .then(async (res) => {
+          const json = (await res.json().catch(() => null)) as {
+            scan?: ScanResult
+            error?: string
+          } | null
+          if (res.status === 401) {
+            throw new Error('Sign in to open this saved scan.')
+          }
+          if (!res.ok) {
+            throw new Error(
+              typeof json?.error === 'string' ? json.error : 'Could not load saved scan.'
+            )
+          }
+          if (!json?.scan) throw new Error('Invalid saved scan.')
+          setData(json.scan)
+          try {
+            window.localStorage.setItem('outliner:lastScan', JSON.stringify(json.scan))
+          } catch {
+            // ignore
+          }
+        })
+        .catch((e: unknown) =>
+          setError(e instanceof Error ? e.message : 'Could not load saved scan.')
+        )
+        .finally(() => setLoading(false))
+      return
+    }
+
     if (!target) return
     setError(null)
-    const fromCache = () => {
-      try {
-        const raw = window.localStorage.getItem('outliner:lastScan')
-        if (!raw) return null
-        const parsed = JSON.parse(raw) as ScanResult
-        if (parsed && parsed.input_target === target) return parsed
-        return null
-      } catch { return null }
-    }
-    const cached = typeof window !== 'undefined' ? fromCache() : null
-    if (cached) { setData(cached); setLoading(false) } else { setLoading(true) }
+    setData(null)
+    setLoading(true)
 
     fetch('http://localhost:8000/api/scan', {
       method: 'POST',
@@ -122,16 +159,36 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
       .then(async (res) => {
         const json = (await res.json().catch(() => null)) as ScanResult | null
         if (!res.ok) {
-          const detail = (json as any)?.detail
+          const detail = (json as { detail?: string } | null)?.detail
           throw new Error(typeof detail === 'string' ? detail : 'Scan failed.')
         }
         if (!json) throw new Error('Empty scan response.')
         setData(json)
-        try { window.localStorage.setItem('outliner:lastScan', JSON.stringify(json)) } catch {}
+        try {
+          window.localStorage.setItem('outliner:lastScan', JSON.stringify(json))
+        } catch {
+          // ignore
+        }
+        try {
+          const saveRes = await fetch('/api/scans', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scan: json })
+          })
+          if (saveRes.ok) {
+            const body = (await saveRes.json().catch(() => null)) as { id?: unknown }
+            if (body && typeof body.id === 'number' && Number.isFinite(body.id)) {
+              router.replace(`/report?scanId=${body.id}`)
+            }
+          }
+        } catch {
+          // not signed in or save unavailable
+        }
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Could not reach scanner backend.'))
       .finally(() => setLoading(false))
-  }, [target])
+  }, [target, scanId, router])
 
   const timestamp = useMemo(() => formatTimestamp(), [])
   const issues = useMemo(() => (data ? evaluateRules(data.features ?? {}) : []), [data])
@@ -191,11 +248,15 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
 
   // --- Early returns for error/loading/missing ---
 
-  if (!target) {
+  const headerTarget = data?.input_target || target || (scanId ? `saved #${scanId}` : '')
+
+  if (!target && !scanId) {
     return (
       <div className="space-y-4">
         <p className="text-[11px] uppercase tracking-[0.18em] text-muted">report</p>
-        <p className="text-sm text-muted">No target provided. Go back and run a scan.</p>
+        <p className="text-sm text-muted">
+          No target or saved scan. Go back and run a scan, or open one from history.
+        </p>
       </div>
     )
   }
@@ -203,7 +264,7 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
   if (error) {
     return (
       <div className="space-y-4">
-        <ReportHeader target={target} normalizedHost={null} timestamp={timestamp} status="failed" />
+        <ReportHeader target={headerTarget} normalizedHost={null} timestamp={timestamp} status="failed" />
         <FailedScanNotice scanErrorType="unknown" scanErrorMessage={error} />
       </div>
     )
@@ -212,7 +273,7 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
   if (!data || loading) {
     return (
       <div className="space-y-4">
-        <ReportHeader target={target} normalizedHost={null} timestamp={timestamp} status="loading" />
+        <ReportHeader target={headerTarget} normalizedHost={null} timestamp={timestamp} status="loading" />
         <p className="text-xs text-muted">{loading ? 'Scanning\u2026' : 'Loading report\u2026'}</p>
       </div>
     )
@@ -221,7 +282,12 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
   if (data.scan_status === 'failed') {
     return (
       <div className="space-y-10">
-        <ReportHeader target={data.input_target || target} normalizedHost={data.normalized_host} timestamp={timestamp} status="failed" />
+        <ReportHeader
+          target={data.input_target || headerTarget}
+          normalizedHost={data.normalized_host}
+          timestamp={timestamp}
+          status="failed"
+        />
         <FailedScanNotice scanErrorType={data.scan_error_type} scanErrorMessage={data.scan_error_message} />
         <section className="space-y-3 rounded border border-white/15 bg-black/20 p-4">
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted">available metadata</p>
@@ -245,7 +311,7 @@ export default function ReportPage({ searchParams }: { searchParams: { target?: 
       {/* Header + view toggle (shared) */}
       <div className="space-y-4">
         <ReportHeader
-          target={data.input_target || target}
+          target={data.input_target || headerTarget}
           normalizedHost={data.normalized_host}
           timestamp={timestamp}
           status="success"

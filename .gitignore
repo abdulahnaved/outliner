@@ -24,4 +24,11 @@ backend/data/scans.*.csv
 backend/data/failures.*.jsonl
 backend/data/archive/
 backend/data/ml/
+# Large cleaned datasets (regenerate from pipeline; keep locally)
+backend/data/processed/*.jsonl
+backend/data/processed/*.csv
+
+# Next.js app SQLite (local auth + saved scans)
+data/*.db
+data/*.db-*
 

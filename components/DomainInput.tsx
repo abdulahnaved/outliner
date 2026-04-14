@@ -7,9 +7,8 @@ export function DomainInput() {
   const router = useRouter()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     setError(null)
 
@@ -19,43 +18,8 @@ export function DomainInput() {
       return
     }
 
-    setLoading(true)
-    try {
-      const res = await fetch('http://localhost:8000/api/scan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ target: trimmed })
-      })
-
-      const data = await res.json().catch(() => null)
-
-      if (!res.ok) {
-        const detail =
-          (data && typeof data.detail === 'string' && data.detail) ||
-          'Scan failed.'
-        setError(detail)
-        return
-      }
-
-      if (data) {
-        if (typeof window !== 'undefined') {
-          try {
-            window.localStorage.setItem('outliner:lastScan', JSON.stringify(data))
-          } catch {
-            // ignore storage errors
-          }
-        }
-
-        const searchParams = new URLSearchParams({ target: trimmed })
-        router.push(`/report?${searchParams.toString()}`)
-      }
-    } catch {
-      setError('Could not reach scanner backend.')
-    } finally {
-      setLoading(false)
-    }
+    const searchParams = new URLSearchParams({ target: trimmed })
+    router.push(`/report?${searchParams.toString()}`)
   }
 
   return (
@@ -72,14 +36,12 @@ export function DomainInput() {
         />
         <button
           type="submit"
-          disabled={loading}
-          className="h-10 rounded border border-red-500/70 bg-red-500/15 px-4 text-xs font-semibold tracking-wide text-red-500 shadow-glow transition hover:border-red-500 hover:bg-red-500/25 disabled:cursor-not-allowed disabled:border-red-500/40 disabled:bg-red-500/10 sm:h-auto sm:px-6"
+          className="h-10 rounded border border-red-500/70 bg-red-500/15 px-4 text-xs font-semibold tracking-wide text-red-500 shadow-glow transition hover:border-red-500 hover:bg-red-500/25 sm:h-auto sm:px-6"
         >
-          {loading ? 'FETCHING…' : 'RUN SCAN'}
+          RUN SCAN
         </button>
       </div>
       {error && <p className="text-[11px] text-red-400">{error}</p>}
     </form>
   )
 }
-

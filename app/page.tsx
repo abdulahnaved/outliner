@@ -87,25 +87,20 @@ export default function LandingPage() {
             Ethical use only: run it on domains you own or have permission to test.
           </p>
         </div>
-        <Link
-          href="/method"
-          className="inline-flex items-center text-xs text-red-500 underline-offset-4 hover:underline"
-        >
-          Full method →
-        </Link>
-      </section>
-
-      <section id="contact" className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">contact</h2>
-        <div className="space-y-2 text-sm text-muted">
-          <p>Say hello: contact@outliner</p>
+        <div className="flex flex-wrap gap-4">
+          <Link
+            href="/method"
+            className="inline-flex items-center text-xs text-red-500 underline-offset-4 hover:underline"
+          >
+            Full method →
+          </Link>
+          <Link
+            href="/#scan"
+            className="inline-flex items-center text-xs text-accent underline-offset-4 hover:underline"
+          >
+            Back to scan
+          </Link>
         </div>
-        <Link
-          href="/#scan"
-          className="inline-flex items-center text-xs text-accent underline-offset-4 hover:underline"
-        >
-          Back to top
-        </Link>
       </section>
     </div>
   )

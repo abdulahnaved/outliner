@@ -54,7 +54,7 @@ export async function GET() {
   if (userId === null) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const rows = await dbQuery<{ id: number; result_json: string; created_at: string }>(
+  const rows = await dbQuery<{ id: unknown; result_json: string; created_at: string }>(
     `SELECT id, result_json, created_at::text AS created_at
      FROM saved_scans
      WHERE user_id = $1
@@ -63,7 +63,13 @@ export async function GET() {
     [userId, MAX_LIST]
   )
 
-  const scans = rows.map((r) => summarize(r.id, r.result_json, r.created_at))
+  const scans = rows
+    .map((r) => {
+      const raw = (r as any).id
+      const id = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN
+      return Number.isFinite(id) ? summarize(Math.trunc(id), r.result_json, r.created_at) : null
+    })
+    .filter((x): x is Summary => x !== null)
   return NextResponse.json({ scans })
 }
 

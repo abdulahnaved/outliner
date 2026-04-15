@@ -24,17 +24,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
   }
 
-  const row = await dbQueryOne<{ id: number; email: string; password_hash: string }>(
+  const row = await dbQueryOne<{ id: unknown; email: unknown; password_hash: unknown }>(
     'SELECT id, email, password_hash FROM users WHERE email = $1',
     [email]
   )
 
-  if (!row || !verifyPassword(password, row.password_hash)) {
+  const idRaw = row ? (row as any).id : undefined
+  const id = typeof idRaw === 'number' ? idRaw : typeof idRaw === 'string' ? Number(idRaw) : NaN
+  const emailDb = row ? (row as any).email : undefined
+  const passwordHash = row ? (row as any).password_hash : undefined
+
+  if (!Number.isFinite(id) || typeof emailDb !== 'string' || typeof passwordHash !== 'string') {
     return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
   }
 
-  const token = await signUserSession(row.id)
-  const res = NextResponse.json({ ok: true, user: { id: row.id, email: row.email } })
+  if (!verifyPassword(password, passwordHash)) {
+    return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+  }
+
+  const userId = Math.trunc(id)
+  const token = await signUserSession(userId)
+  const res = NextResponse.json({ ok: true, user: { id: userId, email: emailDb } })
   res.cookies.set(SESSION_COOKIE_NAME, token, sessionCookieOptions())
   return res
 }

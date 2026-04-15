@@ -3,6 +3,11 @@ node_modules
 out
 .DS_Store
 
+# Local env files (never commit)
+.env
+.env.local
+.env.*.local
+
 # Python backend
 .venv
 __pycache__/

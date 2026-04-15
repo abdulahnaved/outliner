@@ -13,11 +13,16 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!token) return null
   const jwtUserId = await verifyUserSession(token)
   if (jwtUserId === null) return null
-  const row = await dbQueryOne<CurrentUser>(
+  const row = await dbQueryOne<{ id: unknown; email: unknown }>(
     'SELECT id, email FROM users WHERE id = $1',
     [jwtUserId]
   )
-  return row ?? null
+  if (!row) return null
+  const idRaw = (row as any).id
+  const id = typeof idRaw === 'number' ? idRaw : typeof idRaw === 'string' ? Number(idRaw) : NaN
+  const email = (row as any).email
+  if (!Number.isFinite(id) || typeof email !== 'string') return null
+  return { id: Math.trunc(id), email }
 }
 
 export async function getSessionUserId(): Promise<number | null> {

@@ -74,7 +74,9 @@ export async function dbInsertReturningId(
   insertSqlReturningId: string,
   params: unknown[] = []
 ): Promise<number> {
-  const row = await dbQueryOne<{ id: number }>(insertSqlReturningId, params)
-  if (!row || typeof row.id !== 'number') throw new Error('Insert failed (no id returned)')
-  return row.id
+  const row = await dbQueryOne<{ id: unknown }>(insertSqlReturningId, params)
+  const raw = row ? (row as any).id : undefined
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN
+  if (!Number.isFinite(n) || n < 1) throw new Error('Insert failed (no id returned)')
+  return Math.trunc(n)
 }

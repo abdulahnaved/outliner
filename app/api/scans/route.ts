@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSessionUserId } from '@/lib/auth-server'
-import { getDb } from '@/lib/db'
+import { dbInsertReturningId, dbQuery } from '@/lib/db'
 
 const MAX_LIST = 200
+
+export const runtime = 'nodejs'
 
 type Summary = {
   id: number
@@ -52,13 +54,14 @@ export async function GET() {
   if (userId === null) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const db = getDb()
-  const rows = db
-    .prepare(
-      `SELECT id, result_json, created_at FROM saved_scans
-       WHERE user_id = ? ORDER BY datetime(created_at) DESC LIMIT ?`
-    )
-    .all(userId, MAX_LIST) as { id: number; result_json: string; created_at: string }[]
+  const rows = await dbQuery<{ id: number; result_json: string; created_at: string }>(
+    `SELECT id, result_json, created_at::text AS created_at
+     FROM saved_scans
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [userId, MAX_LIST]
+  )
 
   const scans = rows.map((r) => summarize(r.id, r.result_json, r.created_at))
   return NextResponse.json({ scans })
@@ -95,11 +98,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Scan payload too large' }, { status: 413 })
   }
 
-  const db = getDb()
-  const r = db
-    .prepare('INSERT INTO saved_scans (user_id, result_json) VALUES (?, ?)')
-    .run(userId, json)
-
-  const id = Number(r.lastInsertRowid)
+  const id = await dbInsertReturningId(
+    'INSERT INTO saved_scans (user_id, result_json) VALUES ($1, $2) RETURNING id',
+    [userId, json]
+  )
   return NextResponse.json({ id })
 }

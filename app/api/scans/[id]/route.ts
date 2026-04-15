@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getSessionUserId } from '@/lib/auth-server'
-import { getDb } from '@/lib/db'
+import { dbQueryOne } from '@/lib/db'
 
 type RouteContext = { params: { id: string } }
+
+export const runtime = 'nodejs'
 
 export async function GET(_request: Request, context: RouteContext) {
   const userId = await getSessionUserId()
@@ -16,10 +18,10 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: 'Invalid scan id' }, { status: 400 })
   }
 
-  const db = getDb()
-  const row = db
-    .prepare('SELECT result_json FROM saved_scans WHERE id = ? AND user_id = ?')
-    .get(id, userId) as { result_json: string } | undefined
+  const row = await dbQueryOne<{ result_json: string }>(
+    'SELECT result_json FROM saved_scans WHERE id = $1 AND user_id = $2',
+    [id, userId]
+  )
 
   if (!row) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

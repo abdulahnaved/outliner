@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { hashPassword } from '@/lib/password'
-import { getDb } from '@/lib/db'
+import { dbInsertReturningId } from '@/lib/db'
 import {
   SESSION_COOKIE_NAME,
   sessionCookieOptions,
   signUserSession
 } from '@/lib/session-token'
+
+export const runtime = 'nodejs'
 
 const MAX_EMAIL_LEN = 254
 /** bcrypt effectively uses the first 72 bytes; keep a clear cap for users */
@@ -43,20 +45,19 @@ export async function POST(request: Request) {
   }
 
   const passwordHash = hashPassword(password)
-  const db = getDb()
 
   try {
-    const r = db
-      .prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)')
-      .run(emailRaw, passwordHash)
-    const userId = Number(r.lastInsertRowid)
+    const userId = await dbInsertReturningId(
+      'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id',
+      [emailRaw, passwordHash]
+    )
     const token = await signUserSession(userId)
     const res = NextResponse.json({ ok: true, user: { id: userId, email: emailRaw } })
     res.cookies.set(SESSION_COOKIE_NAME, token, sessionCookieOptions())
     return res
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : ''
-    if (msg.includes('UNIQUE') || msg.includes('unique')) {
+    if (msg.includes('UNIQUE') || msg.includes('unique') || msg.toLowerCase().includes('duplicate')) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
     throw e

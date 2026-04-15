@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { verifyPassword } from '@/lib/password'
-import { getDb } from '@/lib/db'
+import { dbQueryOne } from '@/lib/db'
 import {
   SESSION_COOKIE_NAME,
   sessionCookieOptions,
   signUserSession
 } from '@/lib/session-token'
+
+export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   let body: unknown
@@ -22,10 +24,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
   }
 
-  const db = getDb()
-  const row = db
-    .prepare('SELECT id, email, password_hash FROM users WHERE email = ?')
-    .get(email) as { id: number; email: string; password_hash: string } | undefined
+  const row = await dbQueryOne<{ id: number; email: string; password_hash: string }>(
+    'SELECT id, email, password_hash FROM users WHERE email = $1',
+    [email]
+  )
 
   if (!row || !verifyPassword(password, row.password_hash)) {
     return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })

@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { getDb } from '@/lib/db'
+import { dbQueryOne } from '@/lib/db'
 import { SESSION_COOKIE_NAME, verifyUserSession } from '@/lib/session-token'
 
 export type CurrentUser = { id: number; email: string }
@@ -13,10 +13,10 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!token) return null
   const jwtUserId = await verifyUserSession(token)
   if (jwtUserId === null) return null
-  const db = getDb()
-  const row = db
-    .prepare('SELECT id, email FROM users WHERE id = ?')
-    .get(jwtUserId) as CurrentUser | undefined
+  const row = await dbQueryOne<CurrentUser>(
+    'SELECT id, email FROM users WHERE id = $1',
+    [jwtUserId]
+  )
   return row ?? null
 }
 

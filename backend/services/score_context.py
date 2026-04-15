@@ -17,6 +17,7 @@ from typing import Optional
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 CANONICAL_DATASET = BACKEND_DIR / "data" / "processed" / "scans.v3_combined.cleaned.jsonl"
+SAMPLED_DISTRIBUTION = BACKEND_DIR / "data" / "processed" / "rule_score_distribution.sample.json"
 
 
 def _coerce_score(v) -> Optional[float]:
@@ -35,6 +36,18 @@ def _coerce_score(v) -> Optional[float]:
 def load_distribution_scores() -> list[float]:
     scores: list[float] = []
     if not CANONICAL_DATASET.exists():
+        # Production deployments (Render) don't ship the full processed dataset.
+        # Fall back to a small committed sample so percentile UI still works.
+        if SAMPLED_DISTRIBUTION.exists():
+            try:
+                payload = json.loads(SAMPLED_DISTRIBUTION.read_text())
+                raw = payload.get("scores", [])
+                for v in raw:
+                    s = _coerce_score(v)
+                    if s is not None:
+                        scores.append(s)
+            except Exception:
+                return scores
         return scores
     with open(CANONICAL_DATASET) as f:
         for line in f:

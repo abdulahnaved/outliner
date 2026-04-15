@@ -35,6 +35,8 @@ backend/data/ml/**
 # Large cleaned datasets (regenerate from pipeline; keep locally)
 backend/data/processed/*.jsonl
 backend/data/processed/*.csv
+# Keep a small sampled distribution for percentile UI in prod
+!backend/data/processed/rule_score_distribution.sample.json
 
 # Next.js app SQLite (local auth + saved scans)
 data/*.db

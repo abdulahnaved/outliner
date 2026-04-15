@@ -24,10 +24,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
   }
 
-  const row = await dbQueryOne<{ id: unknown; email: unknown; password_hash: unknown }>(
-    'SELECT id, email, password_hash FROM users WHERE email = $1',
-    [email]
-  )
+  let row: { id: unknown; email: unknown; password_hash: unknown } | null = null
+  try {
+    row = await dbQueryOne<{ id: unknown; email: unknown; password_hash: unknown }>(
+      'SELECT id, email, password_hash FROM users WHERE email = $1',
+      [email]
+    )
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : ''
+    // Make common Vercel misconfigurations visible to the UI.
+    if (msg.includes('DATABASE_URL')) {
+      return NextResponse.json(
+        { error: 'Server misconfigured: DATABASE_URL not set.' },
+        { status: 500 }
+      )
+    }
+    if (msg.toLowerCase().includes('outliner_auth_secret')) {
+      return NextResponse.json(
+        { error: 'Server misconfigured: OUTLINER_AUTH_SECRET not set.' },
+        { status: 500 }
+      )
+    }
+    return NextResponse.json({ error: 'Server error.' }, { status: 500 })
+  }
 
   const idRaw = row ? (row as any).id : undefined
   const id = typeof idRaw === 'number' ? idRaw : typeof idRaw === 'string' ? Number(idRaw) : NaN

@@ -60,6 +60,18 @@ export async function POST(request: Request) {
     if (msg.includes('UNIQUE') || msg.includes('unique') || msg.toLowerCase().includes('duplicate')) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
-    throw e
+    if (msg.includes('DATABASE_URL')) {
+      return NextResponse.json(
+        { error: 'Server misconfigured: DATABASE_URL not set.' },
+        { status: 500 }
+      )
+    }
+    if (msg.toLowerCase().includes('outliner_auth_secret')) {
+      return NextResponse.json(
+        { error: 'Server misconfigured: OUTLINER_AUTH_SECRET not set.' },
+        { status: 500 }
+      )
+    }
+    return NextResponse.json({ error: 'Server error.' }, { status: 500 })
   }
 }

@@ -42,10 +42,16 @@ async function getPostgresPool(): Promise<Pool> {
     connectionTimeoutMillis: 5_000,
     allowExitOnIdle: true
   })
-  if (!pgInitPromise) {
-    pgInitPromise = initPostgres(pgPool)
+  // Avoid running DDL on cold start in production; it can add seconds on serverless.
+  // Use OUTLINER_AUTO_MIGRATE=1 if you explicitly want auto-create in prod.
+  const shouldInit =
+    process.env.NODE_ENV !== 'production' || process.env.OUTLINER_AUTO_MIGRATE === '1'
+  if (shouldInit) {
+    if (!pgInitPromise) {
+      pgInitPromise = initPostgres(pgPool)
+    }
+    await pgInitPromise
   }
-  await pgInitPromise
   return pgPool
 }
 

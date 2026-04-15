@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { FormEvent, Suspense, useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
 /** Block open redirects: only same-origin relative paths */
 function safeInternalRedirect(raw: string | null, fallback: string): string {
@@ -14,11 +14,16 @@ function safeInternalRedirect(raw: string | null, fallback: string): string {
 
 function AccountForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
+  const [rawSearch, setRawSearch] = useState<string>('') // avoids Suspense/hydration edge-cases
+  useEffect(() => {
+    setRawSearch(window.location.search ?? '')
+  }, [])
+
+  const searchParams = useMemo(() => new URLSearchParams(rawSearch), [rawSearch])
   const nextPath = safeInternalRedirect(searchParams.get('next'), '/dashboard')
 
   const modeFromUrl = searchParams.get('mode') === 'register' ? 'register' : 'login'
-  const [mode, setMode] = useState<'login' | 'register'>(modeFromUrl)
+  const [mode, setMode] = useState<'login' | 'register'>('login')
 
   useEffect(() => {
     setMode(modeFromUrl)
@@ -34,6 +39,7 @@ function AccountForm() {
       }
       const s = qs.toString()
       router.replace(s ? `/login?${s}` : '/login', { scroll: false })
+      setRawSearch(s ? `?${s}` : '')
     },
     [router, searchParams]
   )
@@ -211,15 +217,5 @@ function AccountForm() {
 }
 
 export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="pt-8 text-sm text-muted" aria-live="polite">
-          Loading…
-        </div>
-      }
-    >
-      <AccountForm />
-    </Suspense>
-  )
+  return <AccountForm />
 }

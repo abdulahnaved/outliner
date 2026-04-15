@@ -1,0 +1,7 @@
+{
+  "k_neighbors": 25,
+  "mean_distance_q50": 3.836262474853129,
+  "mean_distance_q80": 5.41824940152748,
+  "train_samples": 849,
+  "n_features": 45
+}

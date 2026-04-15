@@ -7,11 +7,20 @@ let db: Database.Database | null = null
 function resolveDbPath(): string {
   const env = process.env.OUTLINER_DATABASE_PATH
   if (env) return env
-  const dir = path.join(process.cwd(), 'data')
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
+  // In serverless environments (e.g. Vercel), the project filesystem may be read-only.
+  // Use /tmp to keep auth endpoints functional (note: not durable storage).
+  if (process.env.VERCEL) {
+    return '/tmp/outliner.db'
   }
-  return path.join(dir, 'outliner.db')
+  const dir = path.join(process.cwd(), 'data')
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true })
+    }
+    return path.join(dir, 'outliner.db')
+  } catch {
+    return '/tmp/outliner.db'
+  }
 }
 
 export function getDb(): Database.Database {

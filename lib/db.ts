@@ -35,7 +35,12 @@ async function getPostgresPool(): Promise<Pool> {
   const { Pool } = await import('pg')
   pgPool = new Pool({
     connectionString: requireDatabaseUrl(),
-    ssl: process.env.PGSSLMODE === 'disable' ? undefined : { rejectUnauthorized: false }
+    ssl: process.env.PGSSLMODE === 'disable' ? undefined : { rejectUnauthorized: false },
+    // Serverless-friendly defaults: keep the pool tiny and fail fast.
+    max: 1,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 5_000,
+    allowExitOnIdle: true
   })
   if (!pgInitPromise) {
     pgInitPromise = initPostgres(pgPool)

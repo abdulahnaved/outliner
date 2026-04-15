@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   }
 
   const userId = Math.trunc(id)
-  const token = await signUserSession(userId)
+  const token = await signUserSession({ id: userId, email: emailDb })
   const res = NextResponse.json({ ok: true, user: { id: userId, email: emailDb } })
   res.cookies.set(SESSION_COOKIE_NAME, token, sessionCookieOptions())
   return res

@@ -1,28 +1,20 @@
 import { cookies } from 'next/headers'
-import { dbQueryOne } from '@/lib/db'
 import { SESSION_COOKIE_NAME, verifyUserSession } from '@/lib/session-token'
 
 export type CurrentUser = { id: number; email: string }
 
 /**
- * Resolved user from cookie: valid JWT **and** row still present in `users`
- * (covers deleted users and stale sessions).
+ * Resolved user from cookie: valid JWT.
+ *
+ * Note: we intentionally avoid a DB roundtrip for every page load/navbar refresh,
+ * because serverless Postgres connection setup can dominate latency on Vercel.
  */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const token = cookies().get(SESSION_COOKIE_NAME)?.value
   if (!token) return null
-  const jwtUserId = await verifyUserSession(token)
-  if (jwtUserId === null) return null
-  const row = await dbQueryOne<{ id: unknown; email: unknown }>(
-    'SELECT id, email FROM users WHERE id = $1',
-    [jwtUserId]
-  )
-  if (!row) return null
-  const idRaw = (row as any).id
-  const id = typeof idRaw === 'number' ? idRaw : typeof idRaw === 'string' ? Number(idRaw) : NaN
-  const email = (row as any).email
-  if (!Number.isFinite(id) || typeof email !== 'string') return null
-  return { id: Math.trunc(id), email }
+  const session = await verifyUserSession(token)
+  if (!session) return null
+  return { id: session.id, email: session.email }
 }
 
 export async function getSessionUserId(): Promise<number | null> {

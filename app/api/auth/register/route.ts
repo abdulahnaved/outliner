@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id',
       [emailRaw, passwordHash]
     )
-    const token = await signUserSession(userId)
+    const token = await signUserSession({ id: userId, email: emailRaw })
     const res = NextResponse.json({ ok: true, user: { id: userId, email: emailRaw } })
     res.cookies.set(SESSION_COOKIE_NAME, token, sessionCookieOptions())
     return res

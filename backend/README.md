@@ -2,6 +2,11 @@
 
 FastAPI app: scan API, rule-based scoring, and optional ML-predicted score.
 
+## Interactive API docs
+
+- Swagger UI: `/docs`
+- OpenAPI JSON: `/openapi.json`
+
 ## Scan status and failed targets
 
 The scan pipeline degrades gracefully for unreachable or failing targets; the API **always returns 200** with a structured `ScanResult` (except for bad request: invalid target or SSRF, which return 400).

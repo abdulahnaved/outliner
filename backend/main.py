@@ -4,7 +4,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from schemas import FetchRequest, FetchResponse, ScanRequest, ScanResult
+from schemas import FetchRequest, FetchResponse, HealthResponse, ScanRequest, ScanResult
 from utils.normalize import normalize_target
 from utils.ssrf import is_blocked_host
 from services.fetch import perform_fetch
@@ -12,7 +12,24 @@ from services.passive_scan import perform_passive_scan
 
 # Dataset persistence is done only by batch_scan.py; /api/scan returns JSON only.
 
-app = FastAPI(title="Outliner Backend", version="0.1.0")
+TAGS = [
+  {"name": "system", "description": "Service status and health endpoints."},
+  {"name": "scan", "description": "Passive fetch and scan endpoints."},
+]
+
+app = FastAPI(
+  title="Outliner Scanner API",
+  description=(
+    "Academic demo backend for Outliner.\n\n"
+    "Performs **passive** web security inspection (headers/TLS/cookies/redirects), computes a deterministic rule score, "
+    "and optionally adds an ML-estimated score plus a distance-to-training reliability label.\n\n"
+    "Interactive docs are available at `/docs`."
+  ),
+  version="0.1.0",
+  docs_url="/docs",
+  openapi_url="/openapi.json",
+  openapi_tags=TAGS,
+)
 
 app.add_middleware(
   CORSMiddleware,
@@ -23,12 +40,34 @@ app.add_middleware(
 )
 
 
-@app.get("/health")
-async def health() -> dict:
-  return {"ok": True}
+@app.get(
+  "/health",
+  response_model=HealthResponse,
+  tags=["system"],
+  summary="Health check",
+  description="Simple liveness check for the API process. Does not call any external services.",
+  response_description="API is running.",
+)
+async def health() -> HealthResponse:
+  return HealthResponse(ok=True)
 
 
-@app.post("/api/fetch", response_model=FetchResponse)
+@app.post(
+  "/api/fetch",
+  response_model=FetchResponse,
+  tags=["scan"],
+  summary="Fetch a URL (headers + redirects)",
+  description=(
+    "Fetch a single target and return raw response headers and the redirect chain.\n\n"
+    "Includes minimal normalization and a small SSRF guard. This endpoint is a building block for scanning."
+  ),
+  response_description="Fetch result including headers and redirect chain.",
+  responses={
+    400: {"description": "Invalid target or target not allowed."},
+    502: {"description": "Upstream fetch failed."},
+    504: {"description": "Upstream fetch timed out."},
+  },
+)
 async def api_fetch(payload: FetchRequest) -> FetchResponse:
   # Normalize target
   try:
@@ -64,7 +103,26 @@ async def api_fetch(payload: FetchRequest) -> FetchResponse:
   return response_payload
 
 
-@app.post("/api/scan", response_model=ScanResult)
+@app.post(
+  "/api/scan",
+  response_model=ScanResult,
+  tags=["scan"],
+  summary="Run a passive security scan",
+  description=(
+    "Run Outliner’s passive scan pipeline on one target.\n\n"
+    "- Validates + normalizes the target\n"
+    "- Performs a fetch (following redirects)\n"
+    "- Extracts passive security features (TLS, headers, cookies, CORS)\n"
+    "- Computes a deterministic rule-based score\n"
+    "- Optionally adds an ML-estimated score and reliability label\n\n"
+    "For unreachable targets, the API returns **200** with `scan_status=\"failed\"` (scores may be null). "
+    "Only invalid/blocked targets return 400."
+  ),
+  response_description="Scan result: features, evidence snapshot, rule score, and optional ML estimate.",
+  responses={
+    400: {"description": "Invalid target or target not allowed (SSRF guard)."},
+  },
+)
 async def api_scan(payload: ScanRequest) -> ScanResult:
   # Only invalid target / SSRF raise; unreachable targets return 200 with scan_status="failed"
   try:

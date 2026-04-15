@@ -48,6 +48,9 @@ def _classify_scan_error(exc: BaseException) -> Tuple[str, str]:
         return "http_error", f"HTTP error: {err_msg}"
     if isinstance(exc, httpx.HTTPError):
         return "http_error", f"HTTP error: {err_msg}"
+    # Some runtimes (or proxies) surface a generic "Failed to fetch" message.
+    if "failed to fetch" in err_msg.lower():
+        return "connection_error", f"Fetch failed: {err_msg}"
     # Blocked / anti-bot: often 403 or connection closed without clear message
     if "403" in err_msg or "forbidden" in err_msg.lower() or "blocked" in err_msg.lower():
         return "blocked", f"Access blocked or forbidden: {err_msg}"
@@ -96,9 +99,11 @@ USER_AGENT = "Outliner/0.1 (research)"
 # - DNS/connect timeout: 3s
 # - HTTP request timeout: 5s
 # - Full scan timeout: 10s
-CONNECT_TIMEOUT_SECONDS = 3.0
-REQUEST_TIMEOUT_SECONDS = 5.0
-FULL_SCAN_TIMEOUT_SECONDS = 10.0
+# Render/free-tier deployments may have cold starts and slower first connections.
+# Keep these conservative but more demo-friendly than the original local defaults.
+CONNECT_TIMEOUT_SECONDS = float(os.getenv("OUTLINER_CONNECT_TIMEOUT_SECONDS", "6.0"))
+REQUEST_TIMEOUT_SECONDS = float(os.getenv("OUTLINER_REQUEST_TIMEOUT_SECONDS", "15.0"))
+FULL_SCAN_TIMEOUT_SECONDS = float(os.getenv("OUTLINER_FULL_SCAN_TIMEOUT_SECONDS", "30.0"))
 REDIRECT_STATUSES = {301, 302, 303, 307, 308}
 WEAK_CIPHER_PATTERNS = re.compile(r"RC4|3DES|DES|NULL|EXPORT|MD5", re.IGNORECASE)
 TLS_VERSION_MAP = {

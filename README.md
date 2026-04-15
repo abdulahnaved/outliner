@@ -18,7 +18,7 @@ Outliner scans a website and produces a security report: rule-based score, ML es
 **Routes:**
 
 - `/` — Landing page; **Run scan** goes to `/report?target=…` (single scan on the report page; backend must be running).
-- `/report?target=...` — Live report (scanner at `localhost:8000`).
+- `/report?target=...` — Live report (proxied through `POST /api/scan` to the Python backend).
 - `/report?scanId=...` — Saved report (SQLite, signed-in users).
 - `/login`, `/register` — Email + password auth (cookie session).
 - `/dashboard` — Signed-in workspace (scan, recent saves, compare).
@@ -55,7 +55,7 @@ uvicorn main:app --reload --port 8000
 - Docs: http://localhost:8000/docs  
 - Optional: set `OUTLINER_ALLOW_LOCALHOST=true` to allow scanning localhost/lab targets.
 
-Run both (backend in one terminal, `npm run dev` in another) so the frontend can call the scan API.
+Run both (backend in one terminal, `npm run dev` in another). The frontend calls `POST /api/scan`, which proxies to the Python backend (default `http://localhost:8000`; override with `OUTLINER_SCANNER_URL`).
 
 ## Testing
 

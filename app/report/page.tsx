@@ -151,7 +151,7 @@ export default function ReportPage({
     setData(null)
     setLoading(true)
 
-    fetch('http://localhost:8000/api/scan', {
+    fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ target })

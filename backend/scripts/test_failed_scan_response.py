@@ -17,7 +17,7 @@ if str(BACKEND_DIR) not in sys.path:
 from services.passive_scan import perform_passive_scan, _make_failed_result
 
 
-def test_failed_result_shape() -> int:
+def smoke_failed_result_shape() -> int:
     """Simulated failed result has correct shape and null scores."""
     r = _make_failed_result(
         "https://example.invalid/",
@@ -51,7 +51,7 @@ def test_failed_result_shape() -> int:
     return 0
 
 
-async def test_unreachable_does_not_raise() -> int:
+async def smoke_unreachable_does_not_raise() -> int:
     """Unreachable target: no exception; result has scan_status and preserved fields."""
     target = "https://nonexistent-domain-xyz-12345.invalid/"
     try:
@@ -80,9 +80,9 @@ async def test_unreachable_does_not_raise() -> int:
 
 
 def main() -> int:
-    if test_failed_result_shape() != 0:
+    if smoke_failed_result_shape() != 0:
         return 1
-    return asyncio.run(test_unreachable_does_not_raise())
+    return asyncio.run(smoke_unreachable_does_not_raise())
 
 
 if __name__ == "__main__":

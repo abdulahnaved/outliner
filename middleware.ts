@@ -1,7 +1,6 @@
-import { jwtVerify } from 'jose'
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
-import { getAuthSecretKey, SESSION_COOKIE_NAME } from '@/lib/session-token'
+import { SESSION_COOKIE_NAME, verifyUserSession } from '@/lib/session-token'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -16,12 +15,8 @@ export async function middleware(request: NextRequest) {
 
   const verify = async (): Promise<boolean> => {
     if (!token) return false
-    try {
-      await jwtVerify(token, getAuthSecretKey())
-      return true
-    } catch {
-      return false
-    }
+    const session = await verifyUserSession(token)
+    return !!session
   }
 
   if (pathname.startsWith('/history') || pathname.startsWith('/dashboard')) {

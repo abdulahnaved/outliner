@@ -22,7 +22,7 @@ export function Navbar() {
   const [user, setUser] = useState<MeUser | null | undefined>(undefined)
 
   const refresh = useCallback(() => {
-    fetch('/api/auth/me', { credentials: 'include' })
+    fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' })
       .then((r) => r.json())
       .then((j: { user?: { id?: number; email?: string } }) => {
         if (j?.user && typeof j.user.id === 'number' && typeof j.user.email === 'string') {

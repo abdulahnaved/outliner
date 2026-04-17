@@ -23,7 +23,10 @@ export async function signUserSession(user: SessionUser): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(String(user.id))
     .setIssuedAt()
-    .setExpirationTime('7d')
+    // Upper bound if the browser keeps the cookie (e.g. session restore). The
+    // Set-Cookie from login/register does not set maxAge, so this is a session
+    // cookie and is cleared when the browser session ends in normal browsers.
+    .setExpirationTime('24h')
     .sign(getAuthSecretKey())
 }
 
@@ -46,5 +49,7 @@ export function sessionCookieOptions() {
     sameSite: 'lax' as const,
     path: '/',
     secure: process.env.NODE_ENV === 'production'
+    // Intentionally no maxAge: session cookie (cleared when the browser session
+    // ends). Do not add maxAge here or the cookie becomes persistent across restarts.
   }
 }

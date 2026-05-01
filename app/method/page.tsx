@@ -55,7 +55,7 @@ export default function MethodPage() {
             <span className="text-text/90">Rule score (0–110):</span> A deterministic score from the observed signals. Each category (transport, content, cookies, policy headers, cross-origin) has a cap so one weak area cannot dominate. Bonuses (e.g. HSTS preload) apply only when the penalty score is already high. Grade (A+ to F) is mapped from the final score.
           </p>
           <p>
-            <span className="text-text/90">ML estimate:</span> An optional prediction from a model trained on prior scans, using the same feature set. It complements the rule score; when the backend has the model artifact, the report shows both.
+            <span className="text-text/90">Learned estimate:</span> A model trained on prior scans predicts the rule-style score from the same passive feature set. The report provides Rule, ML, and Compare modes so the deterministic baseline and learned perspective can be read side by side.
           </p>
           <p>
             The report also shows where your score sits in the distribution of previously scanned sites (percentile) and a security profile radar (five categories, 0–100 per axis derived from Strong/Moderate/Weak/Neutral).

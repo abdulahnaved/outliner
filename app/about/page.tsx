@@ -20,7 +20,7 @@ export default function AboutPage() {
           <div className="space-y-2 rounded border border-white/15 bg-black/25 p-3">
             <p className="text-[11px] uppercase tracking-[0.18em] text-muted">organizes</p>
             <p className="text-sm text-text/90">
-              Five categories: transport, content, cookies, policy headers, cross-origin. One rule-based score plus optional ML estimate.
+              Five categories: transport, content, cookies, policy headers, cross-origin. Rule, learned, and compare scoring views.
             </p>
           </div>
           <div className="space-y-2 rounded border border-white/15 bg-black/25 p-3">
@@ -42,7 +42,7 @@ export default function AboutPage() {
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">method</h2>
         <p className="max-w-2xl text-sm text-muted">
-          We request your domain (following redirects), inspect the response, and score it with a transparent rule set (category-capped, 0–110). An optional ML model trained on prior scans adds a predicted score. Full detail—what we scan, how we score, what we don’t do—is on the method page.
+          We request your domain (following redirects), inspect the response, and score it with a transparent rule set (category-capped, 0–110). A learned model trained on prior scans provides a second scoring perspective, and the report lets you compare both views. Full detail—what we scan, how we score, what we don’t do—is on the method page.
         </p>
         <Link
           href="/method"
@@ -69,4 +69,3 @@ export default function AboutPage() {
     </div>
   )
 }
-

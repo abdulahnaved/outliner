@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Print distribution summary for scans JSONL (default: scans.cleaned.jsonl if exists, else scans.jsonl).
+Prints distribution summary for scans JSONL (default: scans.cleaned.jsonl if exists, else scans.jsonl).
 Dependency-light: stdlib + statistics.
 """
 from __future__ import annotations

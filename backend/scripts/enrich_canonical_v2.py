@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Add rule_score_v2, rule_grade_v2, rule_label_v2, rule_reasons_v2 to the canonical
+Adds rule_score_v2, rule_grade_v2, rule_label_v2, rule_reasons_v2 to the canonical
 processed JSONL (in-place or to a given output path). Uses existing features only.
 """
 from __future__ import annotations

@@ -2,7 +2,6 @@
 """
 Combine multiple cleaned scan JSONL files into one dataset.
 Output: scans.v3_combined.cleaned.jsonl and scans.v3_combined.cleaned.csv.
-Use after: clean_scans_jsonl.py for each of v3 and v3_extra.
 """
 from __future__ import annotations
 

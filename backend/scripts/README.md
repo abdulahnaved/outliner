@@ -11,5 +11,3 @@ Operational and research scripts for the scanner and ML pipeline. The running AP
 | **`train_hist_gradient_boosting.py`**, **`evaluate_regression_models.py`**, **`compute_permutation_importance.py`** | Model training / evaluation. |
 | **`combine_scans.py`**, **`clean_scans_jsonl.py`**, **`summarize_dataset.py`**, **`compare_full_vs_reachable.py`** | Dataset hygiene and summaries. |
 | **`export_rule_vs_ml_disagreement.py`**, **`run_hsts_ablation.py`**, **`compare_with_mozilla.py`** | Analysis / comparisons. |
-
-For ML pipeline details, see `backend/data/README.md` and `backend/docs/`.

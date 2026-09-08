@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
-# Regression-safe feature keys only (no scoring proxies or labels).
+# Regression-safe feature keys only.
 # Must match export_regression_dataset.REGRESSION_SAFE_FEATURES.
 REGRESSION_SAFE_FEATURES = [
     "has_https",
@@ -99,7 +99,7 @@ def build_feature_row(scan_result: dict[str, Any]) -> dict[str, float]:
             v = 0
         flat[key] = _coerce_float(v)
 
-    # Derived / missing-value handling (must match training)
+    # Derived / missing-value handling
     tls = flat.get("tls_version")
     if tls is None or (isinstance(tls, float) and math.isnan(tls)):
         flat["tls_version"] = 0.0

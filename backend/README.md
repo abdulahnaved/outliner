@@ -42,3 +42,5 @@ The scan pipeline degrades gracefully for unreachable or failing targets; the AP
   ```
 
 - **Smoke test:** from `backend`, run `python scripts/test_ml_inference.py` to verify inference returns a numeric predicted score (requires artifacts to exist).
+
+Local setup:  pip install -r requirements-dev.txt

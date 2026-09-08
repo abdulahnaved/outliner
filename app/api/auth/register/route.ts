@@ -10,7 +10,6 @@ import {
 export const runtime = 'nodejs'
 
 const MAX_EMAIL_LEN = 254
-/** bcrypt effectively uses the first 72 bytes; keep a clear cap for users */
 const MAX_PASSWORD_LEN = 72
 
 function validEmail(s: string): boolean {

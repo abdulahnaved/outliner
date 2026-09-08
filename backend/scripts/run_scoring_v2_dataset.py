@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Run scoring_v2 on the canonical dataset and report:
+Runs scoring_v2 on the canonical dataset and report:
 - score distribution (v2), grade distribution (v2)
 - old vs new grade comparison
 - example sites: old score vs new score
@@ -118,7 +118,7 @@ def main() -> int:
     print()
 
     print("--- Example sites (old vs new score) ---")
-    # Pick a mix: some improved, some same, some worse; and spread of scores
+    # Picks a mix: some improved, some same, some worse; and spread of scores
     examples = []
     for x in results:
         host = (x["row"].get("normalized_host") or x["row"].get("requested_url") or "?")[:60]

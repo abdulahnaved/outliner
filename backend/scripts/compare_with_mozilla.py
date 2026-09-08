@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lightweight external validation of scoring_v2 against Mozilla HTTP Observatory.
+external validation of scoring_v2 against Mozilla HTTP Observatory.
 
 This script:
 1. Loads our canonical dataset (scans.v3_combined.cleaned.jsonl) and reads v2 scores.
@@ -13,7 +13,6 @@ This script:
    - data/validation/mozilla_grade_distribution.png
 5. Prints a short terminal summary (alignment stats and top mismatches).
 
-NOTE: This is a validation experiment only; it DOES NOT modify scoring_v2, datasets, or models.
 """
 from __future__ import annotations
 
@@ -59,9 +58,8 @@ PREFERRED_SAMPLE_DOMAINS = [
     "baja.hu",
 ]
 
-# Mozilla Observatory (legacy) was sunset Oct 2024.
 # MDN HTTP Observatory v2 API (current):
-#   POST https://observatory-api.mdn.mozilla.net/api/v2/scan?host=<domain>
+# POST https://observatory-api.mdn.mozilla.net/api/v2/scan?host=<domain>
 OBS_SCAN_V2_URL = "https://observatory-api.mdn.mozilla.net/api/v2/scan"
 
 
@@ -139,7 +137,6 @@ def build_our_scores(rows: List[Dict[str, Any]]) -> Dict[str, OurScores]:
             rule_label_v2=r.get("rule_label_v2"),
             rule_reasons_v2=r.get("rule_reasons_v2") or [],
         )
-        # Prefer latest occurrence if duplicates; dataset is already deduped, so this is mostly defensive.
         by_host[host] = our
     return by_host
 
@@ -246,10 +243,8 @@ def call_mozilla_observatory(domain: str, *, timeout: float = 30.0) -> MozillaSc
     except Exception as e:
         return MozillaScores(domain=domain, mozilla_score=None, mozilla_grade=None, error=f"scan JSON error: {e}")
 
-    # Error shape: {"error": "...", "message": "..."}
     if isinstance(data, dict) and data.get("error"):
         msg = data.get("message") or data.get("error")
-        # Sometimes status_code is included even on error.
         status_code = data.get("status_code") if isinstance(data, dict) else None
         try:
             status_i = int(status_code) if status_code is not None else None
@@ -278,7 +273,7 @@ def _mozilla_is_usable(m: MozillaScores) -> bool:
         return False
     if m.mozilla_status_code is None:
         return True
-    # Exclude common WAF/blocked/failed signals.
+    # Excludes common WAF/blocked/failed signals.
     return m.mozilla_status_code not in (0, 401, 403, 405, 408, 409, 429, 500, 502, 503, 504)
 
 

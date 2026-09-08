@@ -20,7 +20,6 @@ export async function POST(request: Request) {
   const url = `${base}/api/scan`
 
   // Proxy to the Python backend so the browser never hardcodes localhost
-  // and we avoid CORS issues during demos.
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

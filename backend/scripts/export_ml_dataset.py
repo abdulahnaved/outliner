@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Export ML-ready flat CSV from cleaned v3 combined JSONL.
+Exports ML-ready flat CSV from cleaned v3 combined JSONL.
 
 Reads data/scans.v3_combined.cleaned.jsonl, flattens "features" into columns,
 keeps normalized_host as metadata and rule_score/rule_label as targets.
@@ -81,7 +81,7 @@ def flatten_features(
             continue
         flat[k] = v
 
-    # Missing value handling and derived columns (apply after flattening).
+    # Missing value handling and derived columns.
     tls = flat.get("tls_version")
     if tls is None or (isinstance(tls, float) and math.isnan(tls)):
         flat["tls_version"] = 0

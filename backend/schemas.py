@@ -27,7 +27,6 @@ class FetchResponse(BaseModel):
   headers: Dict[str, Any] = Field(default_factory=dict, description="Response headers as a dictionary.")
 
 
-# --- Phase 2 Scan ---
 
 class ScanRequest(BaseModel):
   target: str = Field(..., description="Target domain or URL to scan (e.g. example.com or https://example.com).")
@@ -120,7 +119,6 @@ class ScanEvidence(BaseModel):
 
 
 # Allowed scan status values for graceful degradation.
-# (Partial removed: failed targets are always represented as scan_status="failed".)
 ScanStatus = Literal["success", "failed"]
 
 
@@ -160,13 +158,13 @@ class ScanResult(BaseModel):
   rule_grade_v3: Optional[str] = None
   rule_label_v3: Optional[int] = None
   rule_reasons_v3: List[str] = Field(default_factory=list)
-  # ML prediction (additive; scan succeeds even when prediction unavailable)
+  # ML prediction 
   prediction_available: bool = Field(default=False, description="Whether the ML model produced a prediction.")
   predicted_rule_score: Optional[float] = Field(default=None, description="ML-predicted rule-like score (0–110 scale).")
   ml_model_name: Optional[str] = Field(default=None, description="ML model family name (for transparency).")
   ml_model_variant: Optional[str] = Field(default=None, description="ML model variant identifier (for transparency).")
   prediction_error: Optional[str] = Field(default=None, description="Prediction failure reason, if prediction_available=false due to an error.")
-  # ML reliability (additive; careful wording; derived from distance-to-training when available)
+  # ML reliability 
   prediction_reliability: Optional[Literal["higher", "moderate", "lower"]] = Field(
     default=None,
     description="Reliability tier for the ML estimate based on distance-to-training (higher/moderate/lower)."

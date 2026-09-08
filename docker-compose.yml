@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: outliner
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: outliner
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    
+
+  scanner:
+    build: ./backend
+    ports:
+      - "8000:8000"
+
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://outliner:devpassword@db:5432/outliner
+      OUTLINER_AUTH_SECRET: local-dev-secret-not-for-production
+      OUTLINER_SCANNER_URL: http://scanner:8000
+      OUTLINER_AUTO_MIGRATE: "1"
+      PGSSLMODE: disable
+    depends_on:
+      - db
+      - scanner
+
+volumes:
+  pgdata:

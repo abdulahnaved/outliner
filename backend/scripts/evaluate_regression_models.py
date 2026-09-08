@@ -1,18 +1,6 @@
 #!/usr/bin/env python3
 """
-Evaluate multiple regression models for predicting the deterministic baseline score.
-
-This project currently trains ML to predict rule_score_v2 from passive scan features.
-That is intentionally a "learned estimator of the baseline" rather than a ground-truth
-security outcome model.
-
-This script makes model comparison explicit and thesis-friendly:
-- Linear Regression
-- Random Forest Regressor
-- Gradient Boosting Regressor
-- HistGradientBoosting Regressor
-
-Outputs are written to data/ml/results/model_eval_* so results are easy to inspect later.
+Evaluates multiple regression models for predicting the deterministic baseline score.
 """
 
 from __future__ import annotations

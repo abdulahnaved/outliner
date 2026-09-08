@@ -1,5 +1,5 @@
 """
-Passive scanner v3: posture features + rule-based scoring (OWASP-inspired).
+Passive scanner v3 (not to be confused with scoring v3, this is the third version of the scanner)
 """
 from __future__ import annotations
 
@@ -100,7 +100,6 @@ USER_AGENT = "Outliner/0.1 (research)"
 # - HTTP request timeout: 5s
 # - Full scan timeout: 10s
 # Render/free-tier deployments may have cold starts and slower first connections.
-# Keep these conservative but more demo-friendly than the original local defaults.
 CONNECT_TIMEOUT_SECONDS = float(os.getenv("OUTLINER_CONNECT_TIMEOUT_SECONDS", "6.0"))
 REQUEST_TIMEOUT_SECONDS = float(os.getenv("OUTLINER_REQUEST_TIMEOUT_SECONDS", "15.0"))
 FULL_SCAN_TIMEOUT_SECONDS = float(os.getenv("OUTLINER_FULL_SCAN_TIMEOUT_SECONDS", "30.0"))
@@ -272,9 +271,7 @@ def _parse_cert_not_after(not_after: str) -> Optional[datetime]:
     if not not_after or not isinstance(not_after, str):
         return None
     try:
-        # ssl.getpeercert() returns this format on most platforms
         dt = datetime.strptime(not_after.strip(), "%b %d %H:%M:%S %Y %Z")
-        # Treat as UTC (GMT)
         return dt.replace(tzinfo=timezone.utc)
     except (ValueError, TypeError):
         try:
@@ -351,7 +348,7 @@ async def perform_passive_scan(target: str) -> ScanResult:
         except Exception:
             pass
 
-        # 3) redirect_http_to_https — dedicated HTTP probe (do not reuse final fetch)
+        # 3) redirect_http_to_https — dedicated HTTP probe 
         redirect_http_to_https = 0
         http_probe_status: Optional[int] = None
         http_probe_location: Optional[str] = None
@@ -461,7 +458,7 @@ async def perform_passive_scan(target: str) -> ScanResult:
             or (_get_header(headers, "feature-policy") or "").strip()
         ) else 0
 
-        # 8) Server exposure (presence only)
+        # 8) Server exposure 
         server_header_present = 1 if (_get_header(headers, "server") or "").strip() else 0
         x_powered_by_present = 1 if (_get_header(headers, "x-powered-by") or "").strip() else 0
 

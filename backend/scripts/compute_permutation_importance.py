@@ -3,9 +3,8 @@
 Compute permutation feature importance for the best regression model
 (Gradient Boosting Regressor trained on full dataset).
 
-Retrains the model on the same train split (no saved model), then runs
-sklearn's permutation_importance on the test set. Saves CSV, top-15 plot,
-and a short thesis-friendly summary.
+Retrains the model on the same train split, then runs
+sklearn's permutation_importance on the test set. Saves CSV, top-15 plot
 """
 from __future__ import annotations
 

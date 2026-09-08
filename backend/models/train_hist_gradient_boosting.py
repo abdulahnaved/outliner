@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Train HistGradientBoostingRegressor (max_depth=5) on the full regression dataset,
+Trains HistGradientBoostingRegressor (max_depth=5) on the full regression dataset,
 evaluate on test, save metrics, predictions, permutation importance, plots,
 and compare with the baseline GradientBoostingRegressor.
 
 Also exports additive reliability artifacts based on distance-to-training examples
 (StandardScaler + NearestNeighbors + distance quantiles). These are used at runtime
-to label predictions as higher/moderate/lower reliability with careful wording.
+to label predictions as higher/moderate/lower reliability.
 """
 from __future__ import annotations
 
@@ -117,15 +117,12 @@ def main() -> int:
     model.fit(X_train, y_train)
 
     # Reliability artifacts: distance-to-training-data in standardized feature space.
-    # This is not "confidence"—it is a conservative signal about how typical the feature vector is
-    # relative to the training set.
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     k_neighbors = 25
     nn = NearestNeighbors(n_neighbors=k_neighbors, metric="euclidean")
     nn.fit(X_train_scaled)
     # Use mean distance to k nearest neighbors as the distance statistic.
-    # For training points, the nearest neighbor list includes itself at distance 0; drop it.
     dists_train, _ = nn.kneighbors(X_train_scaled, n_neighbors=k_neighbors, return_distance=True)
     mean_dist_train = np.mean(dists_train[:, 1:], axis=1) if dists_train.shape[1] > 1 else np.mean(dists_train, axis=1)
     q50 = float(np.quantile(mean_dist_train, 0.50))
@@ -153,7 +150,7 @@ def main() -> int:
         json.dump(preprocessing, f, indent=2)
     print(f"Wrote artifacts to {ARTIFACTS_DIR}", file=sys.stderr)
 
-    # Save additive reliability artifacts (safe to omit in deployment)
+    # Save additive reliability artifacts 
     reliability_artifact = {"scaler": scaler, "nn": nn}
     reliability_stem = f"{MODEL_STEM}_reliability"
     joblib.dump(reliability_artifact, ARTIFACTS_DIR / f"{reliability_stem}.joblib")
@@ -209,7 +206,7 @@ def main() -> int:
             w.writerow([float(a), float(p)])
     print("Wrote hist_gradient_boosting_depth5_predictions.csv", file=sys.stderr)
 
-    # Plots: actual vs predicted, residuals
+    # Plots
     try:
         import matplotlib
         matplotlib.use("Agg")

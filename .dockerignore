@@ -1,0 +1,36 @@
+# Version control
+.git/
+.gitignore
+
+# Secrets — must never reach the image
+.env
+.env.*
+
+# Node
+node_modules/
+.next/
+.swc/
+
+# Python
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+backend/.venv/
+
+# macOS
+**/.DS_Store
+
+# Dev-only, not needed at runtime
+docs/
+lab/
+README.md
+backend/README.md
+
+# Root-level Next.js data dir
+/data/
+
+# Backend data: keep only ML artifacts
+backend/data/*
+!backend/data/ml
+backend/data/ml/*
+!backend/data/ml/artifacts

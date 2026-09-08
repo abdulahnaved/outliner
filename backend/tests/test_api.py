@@ -1,4 +1,4 @@
-"""API tests: health and /api/scan validation (no live HTTP)."""
+"""API tests: health and /api/scan validation."""
 import pytest
 from fastapi.testclient import TestClient
 

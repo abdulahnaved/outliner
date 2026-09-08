@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Smoke test for ML inference: load a scan-like input, call predict_rule_score, verify numeric score.
+Smoke test for ML inference: loads a scan-like input, calls predict_rule_score, verifies numeric score.
 Run from backend: python scripts/test_ml_inference.py
 """
 from __future__ import annotations

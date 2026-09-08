@@ -1,6 +1,6 @@
 """
-v2 hybrid rule-based scoring: category-capped, Mozilla-inspired, less punitive.
-Uses only existing passive security features (no new rescans).
+v2 hybrid rule-based scoring: category-capped, Mozilla-inspired
+Uses only existing passive security features.
 Produces: rule_score_v2, rule_grade_v2, rule_label_v2, rule_reasons_v2, optional debug breakdown.
 """
 from __future__ import annotations

@@ -15,13 +15,9 @@
 - **archive/old_failures/** — Failure logs from previous runs.
 - **archive/old_ml_outputs/** — Previous classification datasets and baseline results (pre–regression).
 
-Do not commit raw scan/failure files if they contain sensitive targets (see `.gitignore`).
 
 ---
 
-## Regression ML pipeline (rule_score prediction)
-
-We predict **rule_score** (0–100) from **raw passive security features** only. This is a regression task, not binary classification.
 
 ### Why regression (not classification)
 

@@ -3,8 +3,6 @@
 Dev-only sanity check for lab targets. Run with lab containers up.
 Uses verify=False for self-signed certs; do not use in production.
 
-Optional: python3 scripts/test_lab.py --scan youtube.com
-  Calls POST /api/scan and prints http_probe evidence for real sites.
 """
 from __future__ import annotations
 

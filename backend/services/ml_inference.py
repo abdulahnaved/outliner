@@ -66,7 +66,7 @@ def _reliability_from_distance(
     reliability: Any | None,
     reliability_meta: dict | None,
     vec: list[float],
-) -> tuple[str | None, str | None]:
+    ) -> tuple[str | None, str | None]:
     """
     Conservative reliability label derived from distance to training data.
 

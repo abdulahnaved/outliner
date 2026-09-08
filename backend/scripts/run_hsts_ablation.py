@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-HSTS ablation: train same regression models with all HSTS-related features removed
-at training time. Compare performance to original (with HSTS) and save results,
+HSTS ablation: trains same regression models with all HSTS-related features removed
+at training time. Compares performance to original (with HSTS) and save results,
 comparison table, GB plots, and summary.
 
 Does not modify dataset files; only drops HSTS columns when building X.

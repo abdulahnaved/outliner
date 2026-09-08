@@ -50,7 +50,6 @@ def main() -> int:
 
     input_path = args.input.resolve()
     if not input_path.exists():
-        # Fallback to legacy layout without datasets/ subdir
         alt = ML_DIR / input_path.name
         if alt.exists():
             input_path = alt
@@ -70,7 +69,6 @@ def main() -> int:
         print("scikit-learn required for split.", file=sys.stderr)
         return 1
 
-    # Infer suffix: dataset_regression_full -> full, dataset_regression_reachable -> reachable
     stem = input_path.stem
     if stem.startswith("dataset_regression_"):
         suffix = stem.replace("dataset_regression_", "", 1)

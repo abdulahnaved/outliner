@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Create stratified train/validation/test splits from an ML CSV.
+Creates stratified train/validation/test splits from an ML CSV.
 
 Reads an ML dataset CSV (e.g. dataset_full.csv or dataset_reachable.csv),
 splits by rule_label to preserve class balance, and writes train/val/test CSVs.
@@ -76,7 +76,6 @@ def main() -> int:
     else:
         suffix = "split"
 
-    # Stratified split requires sklearn.
     try:
         from sklearn.model_selection import train_test_split
     except ImportError:
@@ -84,7 +83,6 @@ def main() -> int:
         return 1
 
     labels = [r.get("rule_label") for r in rows]
-    # Coerce to int for stratify (e.g. "0"/"1" from CSV).
     try:
         y = [int(x) if x is not None and str(x).strip() != "" else 0 for x in labels]
     except (ValueError, TypeError):
@@ -106,7 +104,7 @@ def main() -> int:
     if not rest_rows:
         val_rows, test_rows = [], []
     else:
-        # Second split: val vs test (stratify within rest).
+        # Second split: val vs test .
         val_frac = val_ratio / val_plus_test_ratio if val_plus_test_ratio > 0 else 0.5
         val_rows, test_rows, _, _ = train_test_split(
             rest_rows, rest_y, train_size=val_frac, stratify=rest_y, random_state=args.seed

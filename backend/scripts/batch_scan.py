@@ -2,7 +2,6 @@
 """
 Phase 3 batch scan: run POST /api/scan for each target.
 Appends to scans.jsonl and scans.csv; records failures in failures.jsonl.
-Passive-only; do not crawl. Default 1s delay between requests; use --delay 0 for fastest.
 """
 from __future__ import annotations
 
@@ -17,7 +16,7 @@ from pathlib import Path
 
 import httpx
 
-# Default paths relative to backend/
+# Default paths relative to backend
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_TARGETS = BACKEND_DIR / "data" / "targets.txt"
 DEFAULT_JSONL = BACKEND_DIR / "data" / "scans.jsonl"

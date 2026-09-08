@@ -109,7 +109,6 @@ export default function ReportPage({
 
   useEffect(() => {
     const key = scanId ? `scanId:${scanId}` : target ? `target:${target}` : null
-    // React Strict Mode (dev) runs effects twice; avoid double scan+save.
     if (key && ranKeyRef.current === key) return
     ranKeyRef.current = key
 
@@ -301,7 +300,6 @@ export default function ReportPage({
     )
   }
 
-  // --- SUCCESS ---
 
   const ruleScore = data.rule_score ?? 0
   const ruleGrade = data.rule_grade ?? '\u2014'

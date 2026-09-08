@@ -30,7 +30,6 @@ def is_blocked_host(hostname: str) -> bool:
     except ValueError:
       pass
 
-  # Obvious local names
   if host == "localhost" or host.endswith(".local"):
     return True
 

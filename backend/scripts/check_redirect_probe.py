@@ -2,7 +2,6 @@
 """
 Regression check: scanning youtube.com should produce
   http_probe_status in {301, 302}, http_probe_location startswith "https://", redirect_http_to_https=1.
-Run from backend/ with: python3 scripts/check_redirect_probe.py
 """
 from __future__ import annotations
 

@@ -80,7 +80,6 @@ def main() -> int:
     def resolve(p: Path) -> Path:
         if p.exists():
             return p.resolve()
-        # Fallback for legacy layout without datasets/ subdir
         alt = ML_DIR / p.name
         return alt.resolve() if alt.exists() else p.resolve()
 
@@ -181,7 +180,7 @@ def main() -> int:
                 w.writerow([r.get("normalized_host", ""), actual, float(pred), err])
         print(f"Wrote {pred_path}", file=sys.stderr)
 
-        # Feature importance CSV (canonical names for thesis)
+        # Feature importance CSV 
         imp = results["models"][model_name].get("feature_importance", {})
         if imp:
             base = {"linear_regression": "feature_importance_linear", "random_forest_regressor": "feature_importance_rf", "gradient_boosting_regressor": "feature_importance_gb"}.get(model_name, f"feature_importance_{model_name}")
@@ -228,7 +227,7 @@ def main() -> int:
                 w.writerows(worst)
         print(f"Wrote {err_path}", file=sys.stderr)
 
-    # Plots (use stored test predictions and importance from results)
+    # Plots 
     try:
         import matplotlib
         matplotlib.use("Agg")

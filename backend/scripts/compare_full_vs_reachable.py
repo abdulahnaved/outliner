@@ -104,7 +104,7 @@ def main() -> int:
     full_best_r2 = full.get("models", {}).get(best_reachable_name, {}).get("test", {}).get("r2", 0)
     delta_best_r2 = best_reachable_r2 - full_best_r2
 
-    # Overall: did reachable improve or hurt? Use average test R² across models.
+    # Overall: did reachable improve or hurt? Uses average test R² across models.
     full_avg_r2 = sum(full.get("models", {}).get(n, {}).get("test", {}).get("r2", 0) for n in model_names) / len(model_names)
     reachable_avg_r2 = sum(reachable.get("models", {}).get(n, {}).get("test", {}).get("r2", 0) for n in model_names) / len(model_names)
     avg_delta = reachable_avg_r2 - full_avg_r2

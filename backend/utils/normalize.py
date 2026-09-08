@@ -35,7 +35,7 @@ def normalize_target(raw: str) -> NormalizedTarget:
   if not value:
     raise ValueError("empty target")
 
-  # If no scheme, assume https.
+  # If no scheme, assumes https.
   if not value.lower().startswith(("http://", "https://")):
     value = f"https://{value}"
 

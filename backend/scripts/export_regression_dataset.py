@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Export regression ML datasets from the canonical cleaned JSONL.
+Exports regression ML datasets from the canonical cleaned JSONL.
 
 Reads data/scans.v3_combined.cleaned.jsonl and exports leakage-safe flat CSVs
 for predicting rule_score from raw passive security features only.
@@ -31,7 +31,7 @@ DATA_DIR = BACKEND_DIR / "data"
 ML_DIR = DATA_DIR / "ml"
 DEFAULT_INPUT = DATA_DIR / "processed" / "scans.v3_combined.cleaned.jsonl"
 
-# Excluded entirely (scoring proxies or labels); for schema doc only.
+# Excluded entirely (scoring proxies or labels).
 EXCLUDED_LEAKAGE = frozenset({
     "rule_score",
     "rule_score_v2",
@@ -130,7 +130,6 @@ def main() -> int:
 
     input_path = args.input.resolve()
     if not input_path.exists():
-        # Fallback to legacy location (before data/processed/ reorg)
         alt = DATA_DIR / input_path.name
         if alt.exists():
             input_path = alt

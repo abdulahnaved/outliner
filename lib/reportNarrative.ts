@@ -67,7 +67,7 @@ export type MlReliability = {
 }
 
 /**
- * Conservative frontend-only reliability estimate. Does not claim statistical confidence.
+ * Conservative frontend-only reliability estimate. 
  */
 export function deriveMlReliability(
   predictionAvailable: boolean,

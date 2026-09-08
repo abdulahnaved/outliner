@@ -132,7 +132,7 @@ def compute_rule_score(features: Dict[str, Any], evidence: Dict[str, Any] | None
     # Label: 1 = bad/risky if score < 70
     rule_label = 1 if score < 70 else 0
 
-    # Top 5 reasons (already in order of application; take first 5)
+    # Top 5 reasons 
     rule_reasons = reasons[:5]
 
     return {

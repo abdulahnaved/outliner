@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 
-/** Old URL: forwards to unified account page */
 export default function RegisterPage({
   searchParams
 }: {

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-One-time utility: read scans.jsonl, normalize to canonical schema, deduplicate,
-write scans.cleaned.jsonl and optionally scans.cleaned.csv. Does not delete originals.
+reads scans.jsonl, normalizes to canonical schema, deduplicate,
+writes scans.cleaned.jsonl and optionally scans.cleaned.csv. Does not delete originals.
 """
 from __future__ import annotations
 

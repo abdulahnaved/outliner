@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
-/** Block open redirects: only same-origin relative paths */
 function safeInternalRedirect(raw: string | null, fallback: string): string {
   if (!raw || !raw.startsWith('/') || raw.startsWith('//') || raw.includes('://')) {
     return fallback

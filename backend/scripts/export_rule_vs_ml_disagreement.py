@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 """
-Export disagreement analysis: rule baseline vs ML estimate across dataset rows.
-
-This produces a thesis-friendly CSV with:
-- normalized_host
-- actual rule_score_v2 (baseline target)
-- ML predicted score (from current artifacts)
-- Δ (ML - Rule)
+Exports disagreement analysis: rule baseline vs ML estimate across dataset rows.
 
 It supports later analysis of agreement/divergence patterns.
 """
